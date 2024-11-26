@@ -1,0 +1,40 @@
+# Ignorar arquivos de ambiente
+*.env
+.env
+*.env.*
+__pycache__
+*.pyc
+*.pyo
+
+# Ignorar diretórios do ambiente virtual
+.venv/
+venv/
+env/
+
+# Ignorar arquivos de configuração do sistema
+*.DS_Store
+*.idea/
+*.vscode/
+
+# Ignorar caches de dependências
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Ignorar arquivos de testes
+tests/
+*.test.py
+*.spec.py
+
+# Ignorar arquivos de dependências do Python
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Ignorar arquivos de logs
+*.log
+
+# Ignorar arquivos de backup e editor
+*~
+*.bak
+*.swp
