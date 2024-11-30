@@ -1,0 +1,38 @@
+name: Python Package using Conda
+
+on: [push]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 5
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.10'
+    - name: Cache Conda
+      uses: actions/cache@v3
+      with:
+        path: ~/conda_pkgs_dir
+        key: ${{ runner.os }}-conda-${{ hashFiles('environment.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-conda-
+    - name: Create Conda environment
+      run: |
+        conda env create --file environment.yml --name ci-env
+    - name: Activate Conda environment
+      run: |
+        conda activate ci-env
+    - name: Lint with flake8
+      run: |
+        conda install flake8
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+    - name: Test with pytest and coverage
+      run: |
+        conda install pytest pytest-cov
+        pytest --cov=src --cov-report=xml
+
