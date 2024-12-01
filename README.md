@@ -266,6 +266,98 @@ PopCorn_AI/
 
 ```
 
+O comando `seed` é frequentemente utilizado para popular um banco de dados com dados iniciais ou de teste. Ele é utilizado em conjunto com comandos personalizados do Django para facilitar a inserção de registros em modelos de banco de dados, como gêneros, categorias ou usuários fictícios, para que a aplicação possa ser testada com dados realistas. 
+
+No seu caso, o comando `seed` que você está tentando usar tem como objetivo popular o banco de dados com registros de gêneros (como Ação, Comédia, etc.). Aqui está uma explicação sobre como o processo de "seeding" funciona e como usá-lo no seu projeto.
+
+### Explicação sobre o comando `seed`
+
+1. **Objetivo do Seed**: 
+   O comando `seed` é utilizado para inserir dados no banco de dados do Django de maneira automatizada. Ele é útil quando você precisa de dados de teste ou dados padrões para o funcionamento da aplicação. Por exemplo, no seu caso, o seed está populando a tabela de gêneros com registros pré-definidos de filmes, como Ação, Comédia, etc.
+
+2. **Como o Seed Funciona**:
+   O comando `seed` vai iterar por uma lista de dados definidos no comando e, para cada item (neste caso, os gêneros de filmes), vai tentar verificar se o item já existe no banco de dados. Caso não exista, ele cria o item e o adiciona ao banco de dados. Caso o item já exista, o Django vai ignorá-lo para evitar duplicação.
+
+3. **Uso do `get_or_create`**:
+   No seu comando `seed`, é utilizado o método `get_or_create`, que faz exatamente isso: ele tenta buscar um objeto no banco de dados com base em parâmetros fornecidos (como `slug` ou `name`). Se o objeto não for encontrado, ele cria um novo registro. Caso contrário, retorna o objeto existente.
+
+4. **Como Rodar o Seed**:
+   Para rodar o comando `seed`, você executa o comando da seguinte forma:
+
+   ```bash
+   python manage.py seed
+   ```
+
+   Este comando irá disparar a execução do método `handle()` que, por sua vez, vai popular o banco de dados com os dados definidos.
+
+### Exemplo no `README.md`
+
+Aqui está um exemplo de como você pode incluir essa explicação no seu arquivo `README.md`:
+
+---
+
+## Comando Seed
+
+O comando `seed` é utilizado para popular o banco de dados com dados iniciais ou de teste, o que facilita o desenvolvimento e a realização de testes com dados realistas. Este comando é útil para inserir informações como gêneros de filmes, categorias de produtos, ou qualquer outro dado que seja essencial para a aplicação.
+
+### Como Utilizar o Comando Seed
+
+1. **Instalar as dependências**:
+   Certifique-se de que todas as dependências estão instaladas, incluindo as dependências do Django e qualquer outra que o projeto possa exigir.
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Rodar o Seed**:
+   O comando para popular o banco de dados com dados iniciais pode ser executado da seguinte forma:
+
+   ```bash
+   python manage.py seed
+   ```
+
+   Esse comando irá:
+
+   - Iterar sobre uma lista de gêneros de filmes predefinidos.
+   - Criar registros para cada gênero no banco de dados, caso ainda não existam.
+   - Ignorar os registros que já existem, evitando duplicações.
+
+### Personalizando o Comando Seed
+
+Se você precisar adicionar ou modificar os dados a serem populados, basta editar o arquivo de comando `seed.py`, localizado em `backend/api/management/commands/seed.py`. Você pode adicionar novos itens na lista de gêneros ou qualquer outro tipo de dado relevante para a aplicação.
+
+#### Exemplo de dados:
+
+```python
+def seed_genres(self):
+    genres = [
+        ("Ação", "Filmes com cenas de grande energia e movimento, como perseguições e batalhas."),
+        ("Comédia", "Filmes feitos para provocar risadas e entretenimento leve."),
+        ("Drama", "Filmes que exploram emoções e situações intensas."),
+        # Adicione mais gêneros aqui...
+    ]
+    
+    for genre_name, description in genres:
+        slug = slugify(genre_name)
+        genre, created = Genre.objects.get_or_create(
+            slug=slug, 
+            defaults={'name': genre_name, 'description': description}
+        )
+        
+        if created:
+            self.stdout.write(self.style.SUCCESS(f"Gênero {genre_name} criado com sucesso!"))
+        else:
+            self.stdout.write(self.style.WARNING(f"Gênero {genre_name} já existe."))
+```
+
+### Como Funciona o `get_or_create`
+
+O método `get_or_create` tenta buscar um registro no banco de dados baseado no parâmetro fornecido (neste caso, `slug`). Se o registro já existir, ele retorna o objeto existente; caso contrário, cria um novo.
+
+---
+
+Com essas informações no seu `README.md`, qualquer desenvolvedor ou colaborador que for utilizar o comando `seed` no projeto poderá entender o seu funcionamento e como usá-lo para popular o banco de dados de forma eficiente.
+
 
 ## 📄 **Licença**
 
