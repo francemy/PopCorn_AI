@@ -1,145 +1,36 @@
-Aqui está um modelo de **README.md** para o seu projeto Vue.js do **PopCorn AI**:
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
----
+## Getting Started
 
-# **PopCorn AI - Frontend**
+First, run the development server:
 
-Este é o frontend da aplicação **PopCorn AI**, uma plataforma de recomendação de filmes desenvolvida com **Vue.js**. Ele consome a API do backend (Flask) e exibe aos usuários listas de filmes e recomendações personalizadas.
-
-## **Tecnologias Utilizadas**
-
-- **Vue.js**: Framework progressivo para construção de interfaces.
-- **TypeScript**: Opcional (dependendo da escolha durante o setup).
-- **Pinia**: Gerenciamento de estado.
-- **Vue Router**: Gerenciamento de rotas.
-- **ESLint + Prettier**: Garantia de qualidade e formatação de código.
-- **Docker**: Containerização para ambiente de produção.
-- **Nginx**: Servidor web para servir os arquivos estáticos.
-
----
-
-## **Funcionalidades**
-
-- Visualização de lista de filmes.
-- Sistema de recomendações personalizado.
-- Comunicação com a API do backend (Flask).
-
----
-
-## **Pré-requisitos**
-
-- **Node.js** (>= 18.x)
-- **pnpm** (gerenciador de pacotes)
-
----
-
-## **Instalação e Desenvolvimento**
-
-1. Clone este repositório:
-   ```bash
-   git clone https://github.com/seu-usuario/popcorn-ai-frontend.git
-   cd popcorn-ai-frontend
-   ```
-
-2. Instale as dependências:
-   ```bash
-   pnpm install
-   ```
-
-3. Execute o servidor de desenvolvimento:
-   ```bash
-   pnpm dev
-   ```
-
-4. Acesse o aplicativo em [http://localhost:5173](http://localhost:5173).
-
----
-
-## **Build para Produção**
-
-Para gerar os arquivos estáticos otimizados:
 ```bash
-pnpm build
-```
-Os arquivos serão gerados no diretório `dist/`.
-
----
-
-## **Executando com Docker**
-
-### **Build e execução do container**
-
-1. Construa a imagem Docker:
-   ```bash
-   docker build -t popcorn-frontend .
-   ```
-
-2. Execute o container:
-   ```bash
-   docker run -p 8080:80 popcorn-frontend
-   ```
-
-3. Acesse a aplicação em [http://localhost:8080](http://localhost:8080).
-
----
-
-## **Usando com Docker Compose**
-
-Se estiver integrando com outros serviços (como backend e banco de dados), use o `docker-compose.yml`:
-
-1. Suba os serviços:
-   ```bash
-   docker-compose up
-   ```
-
-2. O frontend estará disponível em [http://localhost:8080](http://localhost:8080).
-
----
-
-## **Estrutura do Projeto**
-
-```plaintext
-frontend/
-│
-├── public/                 # Arquivos públicos (index.html, favicon, etc.)
-├── src/                    # Código fonte principal
-│   ├── components/         # Componentes Vue reutilizáveis
-│   ├── views/              # Páginas principais (Home, User, etc.)
-│   ├── router/             # Configuração de rotas
-│   ├── store/              # Configuração do Pinia para gerenciamento de estado
-│   ├── App.vue             # Componente raiz
-│   └── main.js             # Entrada principal do aplicativo
-├── Dockerfile              # Configuração Docker
-├── package.json            # Configurações e dependências do projeto
-└── vite.config.js          # Configuração do Vite (bundler)
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
----
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## **Contribuindo**
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-Sinta-se à vontade para contribuir com o projeto, abrindo **issues** ou enviando **pull requests**.
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-1. Faça um fork do repositório.
-2. Crie uma branch com a funcionalidade ou correção:  
-   ```bash
-   git checkout -b minha-feature
-   ```
-3. Faça suas alterações e comite:
-   ```bash
-   git commit -m "Minha contribuição"
-   ```
-4. Envie a branch:
-   ```bash
-   git push origin minha-feature
-   ```
+## Learn More
 
----
+To learn more about Next.js, take a look at the following resources:
 
-## **Licença**
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-Este projeto está licenciado sob a **MIT License**. Consulte o arquivo `LICENSE` para mais informações.
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
----
+## Deploy on Vercel
 
-Se precisar de ajustes ou detalhes adicionais, é só avisar! 🚀
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
