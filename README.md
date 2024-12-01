@@ -120,6 +120,74 @@ PopCornAI/
 
 ---
 
+# PopCorn AI - Base de Dados
+
+PopCorn AI é uma plataforma de recomendação de filmes desenvolvida para oferecer sugestões personalizadas com base nas preferências dos usuários. A base de dados do projeto armazena informações sobre usuários, filmes, gêneros, avaliações e preferências. Abaixo estão os detalhes da estrutura da base de dados.
+
+## Modelos da Base de Dados
+
+### 1. **User (Usuário)**
+- **Descrição**: Armazena informações sobre os usuários da plataforma.
+- **Campos principais**:
+  - `username`: Nome de usuário (único).
+  - `email`: Endereço de e-mail.
+  - `password`: Senha de autenticação.
+  - `first_name`: Nome do usuário.
+  - `last_name`: Sobrenome do usuário.
+
+O modelo de **Usuário** é baseado no modelo `AbstractUser` do Django, o que permite personalizar as informações do usuário conforme necessário.
+
+### 2. **Genre (Gênero)**
+- **Descrição**: Armazena os gêneros de filmes disponíveis na plataforma (por exemplo, "Ação", "Comédia", "Drama").
+- **Campos principais**:
+  - `name`: Nome do gênero (único).
+  - `description`: Descrição do gênero (opcional).
+
+A tabela **Genre** está relacionada com o modelo **Movie**, permitindo que cada filme tenha múltiplos gêneros e que cada gênero tenha vários filmes associados.
+
+### 3. **Movie (Filme)**
+- **Descrição**: Armazena informações sobre os filmes disponíveis na plataforma.
+- **Campos principais**:
+  - `title`: Título do filme.
+  - `description`: Descrição do filme.
+  - `release_date`: Data de lançamento do filme.
+  - `duration`: Duração do filme em minutos.
+  - `image_url`: URL da imagem do filme (opcional).
+  - `genres`: Relacionamento de **Muitos para Muitos** com o modelo **Genre**, permitindo que cada filme tenha vários gêneros.
+
+### 4. **Rating (Avaliação)**
+- **Descrição**: Armazena as avaliações feitas pelos usuários sobre os filmes.
+- **Campos principais**:
+  - `user`: Relacionamento com o usuário que fez a avaliação.
+  - `movie`: Relacionamento com o filme avaliado.
+  - `rating`: Nota dada ao filme (escala de 1.0 a 5.0).
+  - `review`: Comentário opcional sobre o filme.
+  - `created_at`: Data e hora da avaliação.
+
+A tabela **Rating** garante que um usuário só possa avaliar um filme uma vez, utilizando a restrição **unique_together**.
+
+### 5. **Preference (Preferência)**
+- **Descrição**: Armazena as preferências de gêneros dos usuários (favoritos ou evitados).
+- **Campos principais**:
+  - `user`: Relacionamento com o usuário.
+  - `genre`: Relacionamento com o gênero preferido ou evitado.
+  - `preference_type`: Tipo de preferência (favorito ou evitar).
+
+A tabela **Preference** permite que os usuários definam gêneros de filmes que preferem ou evitam.
+
+## Relacionamentos entre Modelos
+
+- **Usuário e Avaliação**: Um usuário pode avaliar múltiplos filmes, e cada filme pode ter múltiplas avaliações de diferentes usuários.
+- **Filme e Gênero**: Um filme pode pertencer a vários gêneros, e um gênero pode incluir vários filmes.
+- **Usuário e Preferência**: Um usuário pode definir preferências sobre gêneros de filmes (favorito ou evitar), com um gênero podendo ser preferido ou evitado por vários usuários.
+
+## Como Configurar a Base de Dados
+
+1. **Criação de Migrações**: Após definir os modelos, você precisa criar as migrações para a base de dados com o comando:
+   ```bash
+   python manage.py makemigrations
+
+
 ## **Licença**
 Este projeto está licenciado sob a **MIT License**. Sinta-se livre para usá-lo, modificá-lo e distribuí-lo.
 
