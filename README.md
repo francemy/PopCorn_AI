@@ -1,197 +1,285 @@
-```markdown
+
 # **PopCorn AI** 🎥🍿
 
-PopCorn AI é uma plataforma de recomendação de filmes desenvolvida para oferecer sugestões personalizadas com base nas preferências dos usuários. Utilizando algoritmos de recomendação, o sistema analisa dados de avaliação para criar uma experiência única para cada usuário.
+**PopCorn AI** é uma plataforma de recomendação de filmes que oferece sugestões personalizadas com base nas preferências dos usuários. Utilizando algoritmos avançados de recomendação, a aplicação analisa dados de avaliação e preferências para criar uma experiência única para cada usuário.
 
 ---
 
-## **Índice**
-- [Visão Geral](#visão-geral)
-- [Tecnologias Utilizadas](#tecnologias-utilizadas)
-- [Instalação e Configuração](#instalação-e-configuração)
-- [Estrutura do Projeto](#estrutura-do-projeto)
-- [Funcionalidades](#funcionalidades)
-- [Como Contribuir](#como-contribuir)
-- [Licença](#licença)
+## 📖 **Descrição do Projeto**
+
+PopCorn AI conecta usuários a filmes relevantes, utilizando informações detalhadas armazenadas em uma base de dados estruturada.  
+O sistema é construído com **Django** no backend e pode ser expandido para integrar algoritmos de machine learning no futuro.
 
 ---
 
-## **Visão Geral**
-PopCorn AI combina ciência de dados, aprendizado de máquina e uma interface amigável para criar recomendações eficazes de filmes. Com um backend robusto em Flask, um frontend dinâmico em Vue.js e um banco de dados eficiente em PostgreSQL, o projeto visa atender a todos os públicos, desde cinéfilos casuais até entusiastas de tecnologia.
-
----
-
-## **Tecnologias Utilizadas**
-- **Backend**: Python (Flask)
-- **Frontend**: Vue.js
-- **Banco de Dados**: PostgreSQL
-- **Manipulação de Dados**: pandas, scikit-learn
-- **Containerização**: Docker e Docker Compose
-- **Dataset**: Arquivos CSV estruturados
-
----
-
-## **Instalação e Configuração**
-
-### **Requisitos**
-- Docker e Docker Compose instalados
-- Python 3.9+ e Node.js 16+ (opcional para execução sem Docker)
-
-### **Passos de Instalação**
-
-#### 1. Clone o repositório
-```bash
-git clone https://github.com/seu-usuario/PopCorn_AI.git
-cd PopCorn_AI
-```
-
-#### 2. Configure o banco de dados
-Certifique-se de que o PostgreSQL esteja rodando e execute o script `setup.sql`:
-```bash
-psql -U seu_usuario -f setup.sql
-```
-
-#### 3. Execute com Docker
-```bash
-docker-compose up --build
-```
-
-#### 4. Acesse o sistema
-- **Frontend**: [http://localhost:8080](http://localhost:8080)
-- **Backend**: [http://localhost:5000](http://localhost:5000)
-
----
-
-## **Estrutura do Projeto**
-
-```
-PopCornAI/
-├── backend/
-│   ├── app/
-│   │   ├── __init__.py
-│   │   ├── routes.py
-│   │   ├── models.py
-│   │   ├── recommender.py
-│   │   └── utils.py
-│   ├── requirements.txt
-│   └── Dockerfile
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── views/
-│   │   ├── App.vue
-│   │   ├── main.js
-│   │   └── router.js
-│   ├── package.json
-│   └── Dockerfile
-├── dataset/
-│   ├── movies.csv
-│   └── ratings.csv
-├── docker-compose.yml
-├── setup.sql
-└── README.md
-```
-
----
-
-## **Funcionalidades**
-1. **Recomendações Personalizadas**
-   - Sugestões de filmes com base no histórico de avaliações dos usuários.
-2. **Pesquisa de Filmes**
-   - Busque por filmes específicos ou por gênero.
-3. **Avaliação de Filmes**
-   - Avalie filmes para melhorar as recomendações futuras.
-4. **Classificação Dinâmica**
-   - Listas de filmes mais populares baseadas em dados reais.
-
----
-
-## **Como Contribuir**
-1. Faça um fork do repositório.
-2. Crie uma branch para sua funcionalidade:
-   ```bash
-   git checkout -b minha-feature
-   ```
-3. Faça o commit das alterações:
-   ```bash
-   git commit -m "Descrição da minha feature"
-   ```
-4. Envie o pull request.
-
----
-
-# PopCorn AI - Base de Dados
-
-PopCorn AI é uma plataforma de recomendação de filmes desenvolvida para oferecer sugestões personalizadas com base nas preferências dos usuários. A base de dados do projeto armazena informações sobre usuários, filmes, gêneros, avaliações e preferências. Abaixo estão os detalhes da estrutura da base de dados.
-
-## Modelos da Base de Dados
+## 🏛 **Modelos da Base de Dados**
 
 ### 1. **User (Usuário)**
-- **Descrição**: Armazena informações sobre os usuários da plataforma.
-- **Campos principais**:
-  - `username`: Nome de usuário (único).
-  - `email`: Endereço de e-mail.
-  - `password`: Senha de autenticação.
-  - `first_name`: Nome do usuário.
-  - `last_name`: Sobrenome do usuário.
+- **Descrição:** Contém informações sobre os usuários da plataforma.  
+- **Campos principais:**
+  - `username` (String): Nome de usuário único.
+  - `email` (String): Endereço de e-mail.
+  - `password` (String): Senha criptografada.
+  - `first_name` (String): Nome do usuário.
+  - `last_name` (String): Sobrenome do usuário.
 
-O modelo de **Usuário** é baseado no modelo `AbstractUser` do Django, o que permite personalizar as informações do usuário conforme necessário.
-
-### 2. **Genre (Gênero)**
-- **Descrição**: Armazena os gêneros de filmes disponíveis na plataforma (por exemplo, "Ação", "Comédia", "Drama").
-- **Campos principais**:
-  - `name`: Nome do gênero (único).
-  - `description`: Descrição do gênero (opcional).
-
-A tabela **Genre** está relacionada com o modelo **Movie**, permitindo que cada filme tenha múltiplos gêneros e que cada gênero tenha vários filmes associados.
-
-### 3. **Movie (Filme)**
-- **Descrição**: Armazena informações sobre os filmes disponíveis na plataforma.
-- **Campos principais**:
-  - `title`: Título do filme.
-  - `description`: Descrição do filme.
-  - `release_date`: Data de lançamento do filme.
-  - `duration`: Duração do filme em minutos.
-  - `image_url`: URL da imagem do filme (opcional).
-  - `genres`: Relacionamento de **Muitos para Muitos** com o modelo **Genre**, permitindo que cada filme tenha vários gêneros.
-
-### 4. **Rating (Avaliação)**
-- **Descrição**: Armazena as avaliações feitas pelos usuários sobre os filmes.
-- **Campos principais**:
-  - `user`: Relacionamento com o usuário que fez a avaliação.
-  - `movie`: Relacionamento com o filme avaliado.
-  - `rating`: Nota dada ao filme (escala de 1.0 a 5.0).
-  - `review`: Comentário opcional sobre o filme.
-  - `created_at`: Data e hora da avaliação.
-
-A tabela **Rating** garante que um usuário só possa avaliar um filme uma vez, utilizando a restrição **unique_together**.
-
-### 5. **Preference (Preferência)**
-- **Descrição**: Armazena as preferências de gêneros dos usuários (favoritos ou evitados).
-- **Campos principais**:
-  - `user`: Relacionamento com o usuário.
-  - `genre`: Relacionamento com o gênero preferido ou evitado.
-  - `preference_type`: Tipo de preferência (favorito ou evitar).
-
-A tabela **Preference** permite que os usuários definam gêneros de filmes que preferem ou evitam.
-
-## Relacionamentos entre Modelos
-
-- **Usuário e Avaliação**: Um usuário pode avaliar múltiplos filmes, e cada filme pode ter múltiplas avaliações de diferentes usuários.
-- **Filme e Gênero**: Um filme pode pertencer a vários gêneros, e um gênero pode incluir vários filmes.
-- **Usuário e Preferência**: Um usuário pode definir preferências sobre gêneros de filmes (favorito ou evitar), com um gênero podendo ser preferido ou evitado por vários usuários.
-
-## Como Configurar a Base de Dados
-
-1. **Criação de Migrações**: Após definir os modelos, você precisa criar as migrações para a base de dados com o comando:
-   ```bash
-   python manage.py makemigrations
-
-
-## **Licença**
-Este projeto está licenciado sob a **MIT License**. Sinta-se livre para usá-lo, modificá-lo e distribuí-lo.
+**Baseado no modelo `AbstractUser` do Django**, permitindo personalizações adicionais conforme necessário.
 
 ---
 
-Desfrute de uma experiência personalizada com PopCorn AI! 🎬🍿 Se tiver dúvidas ou sugestões, não hesite em abrir uma issue. 🚀
+### 2. **Genre (Gênero)**
+- **Descrição:** Representa os gêneros de filmes disponíveis na plataforma, como "Ação", "Comédia" e "Drama".  
+- **Campos principais:**
+  - `name` (String): Nome do gênero (único).
+  - `description` (String): Descrição do gênero (opcional).
+
+Relacionamento:
+- **Muitos para Muitos** com o modelo **Movie**: Um gênero pode estar associado a vários filmes, e um filme pode pertencer a vários gêneros.
+
+---
+
+### 3. **Movie (Filme)**
+- **Descrição:** Armazena informações sobre os filmes disponíveis na plataforma.  
+- **Campos principais:**
+  - `title` (String): Título do filme.
+  - `description` (Text): Descrição do filme.
+  - `release_date` (Date): Data de lançamento.
+  - `duration` (Integer): Duração em minutos.
+  - `image_url` (URL): Link da imagem do filme (opcional).
+
+Relacionamento:
+- **Muitos para Muitos** com o modelo **Genre**.
+
+---
+
+### 4. **Rating (Avaliação)**
+- **Descrição:** Contém as avaliações feitas pelos usuários sobre os filmes.  
+- **Campos principais:**
+  - `user` (ForeignKey): Relaciona o usuário que avaliou.
+  - `movie` (ForeignKey): Relaciona o filme avaliado.
+  - `rating` (Float): Nota (escala de 1.0 a 5.0).
+  - `review` (Text): Comentário opcional.
+  - `created_at` (DateTime): Data e hora da avaliação.
+
+**Restrições:**  
+Um usuário pode avaliar cada filme apenas uma vez, utilizando a restrição **`unique_together`** para os campos `user` e `movie`.
+
+---
+
+### 5. **Preference (Preferência)**
+- **Descrição:** Representa as preferências de gênero de um usuário.  
+- **Campos principais:**
+  - `user` (ForeignKey): Relaciona o usuário.
+  - `genre` (ForeignKey): Relaciona o gênero.
+  - `preference_type` (String): Tipo de preferência (`favorito` ou `evitar`).
+
+---
+
+## 🔗 **Relacionamentos entre Modelos**
+
+- **User ↔ Rating ↔ Movie:**  
+  Usuários avaliam filmes, com notas e comentários.
+
+- **Movie ↔ Genre:**  
+  Filmes pertencem a um ou mais gêneros.
+
+- **User ↔ Preference ↔ Genre:**  
+  Usuários definem seus gêneros favoritos ou evitados.
+
+---
+
+## 🚀 **Funcionalidades Planejadas**
+
+1. **Recomendações Personalizadas:**
+   - Baseadas em avaliações de filmes.
+   - Consideram preferências definidas pelo usuário.
+
+2. **Busca e Filtros:**
+   - Busca por título.
+   - Filtragem por gênero, data de lançamento e duração.
+
+3. **Interface Intuitiva:**
+   - Exibição de filmes com capas, descrições e trailers.
+
+4. **Sistema de Avaliações:**
+   - Usuários podem classificar filmes e escrever resenhas.
+
+---
+
+## 🛠️ **Tecnologias Utilizadas**
+
+- **Backend:**
+  - Python 3.x
+  - Django 4.x
+  - Django REST Framework
+  - SQLite (pode ser migrado para PostgreSQL)
+
+- **Frontend (planejado):**
+  - React.js ou Next.js
+  - Tailwind CSS ou Material-UI
+
+---
+
+## 📚 **Como Rodar o Projeto**
+
+### Backend
+1. **Clone o repositório:**
+   ```bash
+   git clone https://github.com/francemy/PopCorn_AI.git
+   cd popcorn-ai/backend
+   ```
+
+2. **Crie e ative um ambiente virtual:**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # Linux/MacOS
+   venv\Scripts\activate     # Windows
+   ```
+
+3. **Instale as dependências:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Realize as migrações:**
+   ```bash
+   python manage.py migrate
+   ```
+
+5. **Inicie o servidor:**
+   ```bash
+   python manage.py runserver
+   ```
+
+---
+
+## 🏛 **Estrutura do Projeto**
+
+### **Frontend (Next.js)**
+
+#### 📋 **Descrição**
+O frontend da plataforma foi desenvolvido utilizando **Next.js**, um framework de React que permite renderização server-side e oferece otimização de desempenho para aplicações web modernas. A interface foi projetada para ser responsiva e intuitiva, proporcionando uma experiência de usuário agradável.
+
+#### 🌟 **Funcionalidades**
+1. **Página Inicial:**
+   - Exibe os filmes mais populares e recomendados.
+   - Layout dinâmico com imagens e descrições chamativas.
+
+2. **Sistema de Login e Registro:**
+   - Autenticação de usuários via integração com o backend.
+   - Suporte a validação de formulários com mensagens de erro claras.
+
+3. **Recomendações Personalizadas:**
+   - Interface interativa para exibir filmes recomendados.
+   - Filtros para explorar filmes por gêneros e preferências.
+
+4. **Sistema de Avaliação:**
+   - Usuários podem avaliar filmes diretamente na interface.
+   - Exibição de médias de avaliação e resenhas de outros usuários.
+
+5. **Configurações do Usuário:**
+   - Permite gerenciar preferências de gênero (favoritos/evitados).
+   - Atualização de dados pessoais.
+
+---
+
+#### 🛠️ **Tecnologias do Frontend**
+- **Next.js:** Framework React para renderização otimizada.
+- **Axios:** Comunicação com o backend Django via API.
+- **Tailwind CSS:** Biblioteca CSS para estilização responsiva.
+- **material-ui:** biblioteca de component feitos e responsivo
+- **React Hook Form:** Gerenciamento de formulários eficiente.
+
+#### Passos:
+1. Navegue até a pasta `frontend`:
+   ```bash
+   cd ../frontend
+   ```
+
+2. Instale as dependências:
+   ```bash
+   npm install
+   ```
+
+3. Inicie o servidor de desenvolvimento:
+   ```bash
+   npm run dev
+   ```
+
+4. Acesse a aplicação:
+   - URL: `http://localhost:3000`
+
+---
+
+## 🔗 **Estrutura de Pastas**
+
+```plaintext
+PopCorn AI
+├── backend/        # Código do backend em Django
+│   ├── manage.py
+│   ├── db.sqlite3
+│   ├── popcorn_ai/  # Configurações do projeto Django
+│   └── app/         # Aplicação principal
+├── frontend/       # Código do frontend em Next.js
+│   ├── app/       # Páginas da aplicação
+│   ├── components/  # Componentes reutilizáveis
+│   ├── services/      # Arquivos de estilo
+│   └── public/      # Imagens e arquivos estáticos
+└── README.md        # Documentação do projeto
+
+PopCorn_AI/
+├── backend/
+│   ├── api/
+│   │   ├── migrations/
+│   │   └── __pycache__/
+│   ├── backend/
+│   │   └── __pycache__/
+│   ├── staticfiles/
+│   │   ├── admin/
+│   │   │   ├── css/
+│   │   │   ├── img/
+│   │   │   └── js/
+│   │   └── rest_framework/
+│   ├── templates/
+│   └── venv/
+├── frontend/
+│   ├── .next/
+│   ├── app/
+│   ├── components/
+│   ├── node_modules/
+│   ├── public/
+│   ├── services/
+│   ├── types/
+│   ├── .dockerignore
+│   ├── .eslintrc.json
+│   ├── Dockerfile
+│   ├── middleware.ts
+│   ├── next-env.d.ts
+│   ├── next.config.ts
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── postcss.config.mjs
+│   ├── README.md
+│   ├── tailwind.config.ts
+│   └── tsconfig.json
+└── nginx/
+
 ```
+
+
+## 📄 **Licença**
+
+Este projeto está licenciado sob a [MIT License](LICENSE).
+
+---
+
+## 👤 **Autor**
+
+- **Francemy Eduardo Sebastião**  
+  Desenvolvedor Full Stack | Angola  
+  🌍 Luanda, Angola  
+
+Sinta-se à vontade para contribuir ou relatar problemas!
+```
+
+Esse modelo é um ponto de partida para documentar o projeto. Você pode adicionar detalhes específicos conforme o desenvolvimento avança.
