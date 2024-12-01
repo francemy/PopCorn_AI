@@ -1,0 +1,45 @@
+# Geral
+node_modules/
+.env
+.env.local
+.DS_Store
+*.log
+*.lock
+*.pyc
+*.pyo
+*.swp
+__pycache__/
+
+# Python Virtual Environment
+venv/
+
+# Backend (Django)
+backend/db.sqlite3
+backend/.env
+backend/venv/
+backend/venv/*
+backend/__pycache__/
+backend/media/
+backend/staticfiles/
+backend/.vscode/
+
+# Frontend (Next.js)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env
+frontend/.env.local
+frontend/build/
+frontend/.vscode/
+# Logs
+logs/
+*.log
+
+# Editor e sistema operacional
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*.bak
+Thumbs.db
