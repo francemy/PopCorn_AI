@@ -19,10 +19,18 @@ const handleApiError = (error: unknown) => {
 
 // Função para buscar filmes
 export const fetchMovies = async () => {
+  const token = localStorage.getItem("access_token");
+  console.log(`Bearer ${token}`)
   try {
-    const response = await api.get('movies/');
+    
+    const response = await api.get('movies/',{
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
     if (response.status === 200) return response.data;
-    return [];
+    return {data: []};
   } catch (error) {
     handleApiError(error);
   }
@@ -33,7 +41,7 @@ export const fetchGenres = async () => {
   try {
     const response = await api.get('genres/');
     if (response.status === 200) return response.data;
-    return [];
+    return {data: []};
   } catch (error) {
     handleApiError(error);
   }

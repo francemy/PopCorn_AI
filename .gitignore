@@ -17,8 +17,12 @@ venv/
 backend/db.sqlite3
 backend/.env
 backend/venv/
+backend/.venv/
 backend/venv/*
 backend/__pycache__/
+backend/api/__pycache__/
+backend/backend/__pycache__/
+backend/api/migrations/
 backend/media/
 backend/staticfiles/
 backend/.vscode/

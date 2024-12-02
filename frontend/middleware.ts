@@ -8,7 +8,6 @@ export async function middleware(req: NextRequest) {
   // Verificar se o token de autenticação está presente no cookie
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("access_token");
-  console.log(cookieStore)
   // Se o token não existir, redirecionar para a página de login
   if (!accessToken) {
     return NextResponse.redirect(new URL("/login", req.url)); // Página de login

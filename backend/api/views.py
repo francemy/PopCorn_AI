@@ -8,40 +8,47 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.authentication import JWTAuthentication
-
 from django.contrib.auth import authenticate
 import pandas as pd
-
-from .models import Movie, Rating, Genre,Preference
+from .models import Movie, Rating, Genre,Preference,LikeDislike,WatchedMovie,FavoriteMovie
 from .serializers import (
     UserSerializer,
     MovieSerializer,
     GenreSerializer,
     RatingSerializer,
-    PreferenceSerializer
+    PreferenceSerializer,
+    FavoriteMovieSerializer,
+    WatchedMovieSerializer,
+    LikeDislikeSerializer
 )
+from .utils import get_movie_interactions, get_user_interactions  # Importando a função
 
-class PreferenceViewSet(viewsets.ModelViewSet):
+# Utilitário para respostas uniformes
+def create_response(message, data=None, status_code=status.HTTP_200_OK):
+    response = {"message": message}
+    if data is not None:
+        response["data"] = data
+    return Response(response, status=status_code)
+
+class PreferenceCreateView(viewsets.ModelViewSet):
     queryset = Preference.objects.all()
     serializer_class = PreferenceSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]  # Garante que somente usuários autenticados possam acessar as preferências
 
     def perform_create(self, serializer):
         """
-        Override the perform_create method to associate the preference
-        with the authenticated user. Raises a validation error if the user is not authenticated.
+        Sobrescreve o método perform_create para associar a preferência
+        ao usuário autenticado. O Django REST já valida a autenticação, então
+        não há necessidade de uma validação explícita de 'is_authenticated'.
         """
         user = self.request.user
-        if not user:
-            raise ValidationError("Usuário não autenticado.")  # Validação de autenticação
-
         # Salva a preferência associada ao usuário autenticado
         serializer.save(user=user)
 
     def create(self, request, *args, **kwargs):
         """
-        Override the create method to customize the response
-        when a new preference is created.
+        Sobrescreve o método create para personalizar a resposta
+        quando uma nova preferência for criada.
         """
         # Valida os dados do serializer
         serializer = self.get_serializer(data=request.data)
@@ -65,12 +72,6 @@ class PreferenceViewSet(viewsets.ModelViewSet):
         )
 
 
-# Utilitário para respostas uniformes
-def create_response(message, data=None, status_code=status.HTTP_200_OK):
-    response = {"message": message}
-    if data is not None:
-        response["data"] = data
-    return Response(response, status=status_code)
 
 class UserCreateView(APIView):
     """
@@ -90,7 +91,7 @@ class UserCreateView(APIView):
                 },
                 status.HTTP_201_CREATED,
             )
-        return create_response("Erro na criação do usuário.", serializer.errors, status.HTTP_400_BAD_REQUEST)
+        return create_response("Erro na criação do usuário.",None, serializer.errors, status.HTTP_400_BAD_REQUEST)
 
 class RefreshTokenObtainPairView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
@@ -125,11 +126,11 @@ class AuthenticationUserObtainPairView(APIView):
         password = request.data.get("password")
 
         if not username or not password:
-            return create_response("Username e senha são obrigatórios.", status_code=status.HTTP_400_BAD_REQUEST)
+            return create_response(message="Username e senha são obrigatórios.", status_code=status.HTTP_400_BAD_REQUEST)
 
         user = authenticate(username=username, password=password)
         if not user:
-            return create_response("Credenciais inválidas.", status_code=status.HTTP_401_UNAUTHORIZED)
+            return create_response(message="Credenciais inválidas.", status_code=status.HTTP_401_UNAUTHORIZED)
 
         refresh = RefreshToken.for_user(user)
         return create_response(
@@ -157,14 +158,14 @@ class RatingListCreateView(APIView):
     def get(self, request):
         ratings = Rating.objects.all()
         serializer = RatingSerializer(ratings, many=True)
-        return create_response("Lista de avaliações recuperada com sucesso.", serializer.data)
+        return create_response(message="Lista de avaliações recuperada com sucesso.", data=serializer.data, status_code=200)
 
     def post(self, request):
         serializer = RatingSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(user=request.user)
-            return create_response("Avaliação criada com sucesso.", serializer.data, status.HTTP_201_CREATED)
-        return create_response("Erro ao criar avaliação.", serializer.errors, status.HTTP_400_BAD_REQUEST)
+            return create_response(message="Avaliação criada com sucesso.",data=serializer.data,status_code=status.HTTP_201_CREATED)
+        return create_response(message="Erro ao criar avaliação.",data=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
 
 
 class MovieByGenreView(APIView):
@@ -178,9 +179,9 @@ class MovieByGenreView(APIView):
             genre = Genre.objects.get(id=genre_id)
             movies = Movie.objects.filter(genres=genre)
             serializer = MovieSerializer(movies, many=True)
-            return create_response("Filmes encontrados para o gênero.", serializer.data)
+            return create_response(message="Filmes encontrados para o gênero.", data=serializer.data,status_code=200)
         except Genre.DoesNotExist:
-            return create_response("Gênero não encontrado.", status_code=status.HTTP_404_NOT_FOUND)
+            return create_response(message="Gênero não encontrado.", status_code=status.HTTP_404_NOT_FOUND)
 
 
 class MovieListCreateView(APIView):
@@ -188,12 +189,26 @@ class MovieListCreateView(APIView):
     View para listar e criar filmes.
     """
     authentication_classes = [JWTAuthentication]
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]  # Apenas usuários autenticados podem acessar
 
     def get(self, request):
+        user = request.user  # Pega o usuário logado
         movies = Movie.objects.all()
-        serializer = MovieSerializer(movies, many=True)
-        return create_response("Lista de filmes recuperada com sucesso.", serializer.data)
+        movie_data = []
+
+        # Adicionando interações personalizadas para o usuário logado
+        for movie in movies:
+            movie_info = MovieSerializer(movie).data  # Serializa os dados básicos do filme
+            interactions = get_movie_interactions(movie)  # Obtém as interações gerais
+            user_interactions = get_user_interactions(movie, user)  # Obtém as interações do usuário logado
+            # Atualiza as interações específicas do usuário
+            movie_info['user_interactions'] = user_interactions
+            # Atualiza as interações gerais no filme
+            movie_info.update(interactions)
+
+            movie_data.append(movie_info)
+
+        return create_response(message="Lista de filmes recuperada com sucesso.", data=movie_data, status_code=status.HTTP_200_OK)
 
     def post(self, request):
         serializer = MovieSerializer(data=request.data)
@@ -201,12 +216,19 @@ class MovieListCreateView(APIView):
             genre_ids = request.data.get("genres", [])
             if not genre_ids:
                 return create_response(
-                    "Pelo menos um gênero é necessário.",
+                    "Pelo menos um gênero é necessário.", None,
                     status_code=status.HTTP_400_BAD_REQUEST,
                 )
+
             serializer.save()
-            return create_response("Filme criado com sucesso.", serializer.data, status.HTTP_201_CREATED)
-        return create_response("Erro ao criar filme.", serializer.errors, status.HTTP_400_BAD_REQUEST)
+            return create_response(
+                message="Filme criado com sucesso.",
+                data=serializer.data,
+                status_code=status.HTTP_201_CREATED
+            )
+
+        return create_response(message=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
+
 
 
 class GenreListView(APIView):
@@ -219,10 +241,10 @@ class GenreListView(APIView):
     def get(self, request):
         genres = Genre.objects.all()
         if not genres.exists():
-            return create_response("Nenhum gênero encontrado.", status_code=status.HTTP_204_NO_CONTENT)
+            return create_response(message="Nenhum gênero encontrado.", status_code=status.HTTP_204_NO_CONTENT)
 
         serializer = GenreSerializer(genres, many=True)
-        return create_response("Lista de gêneros recuperada com sucesso.", serializer.data)
+        return create_response(message="Lista de gêneros recuperada com sucesso.", data=serializer.data)
     
 @api_view(['GET'])
 def get_movie_recommendations(request):
@@ -256,7 +278,7 @@ def get_movie_recommendations(request):
     # Convertendo os dados de volta para uma lista de títulos
     movie_titles = recommendations['title'].tolist()
 
-    return create_response("Recomendações de filmes", movie_titles)
+    return create_response(message="Recomendações de filmes",data=movie_titles)
 
 
 @api_view(['GET'])
@@ -301,29 +323,7 @@ def get_movie_recommendations2(request):
     # Remover filmes duplicados (caso haja)
     movie_titles = list(dict.fromkeys(movie_titles))
 
-    return create_response("Recomendações de filmes", movie_titles)
-
-
-class PreferenceCreateView(generics.CreateAPIView):
-    serializer_class = PreferenceSerializer
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [AllowAny]  # Permite que qualquer pessoa crie a preferência
-
-    def perform_create(self, serializer):
-        if not self.request.user.is_authenticated:
-            raise AuthenticationFailed('Usuário não autenticado.')
-
-        # O usuário autenticado será associado à preferência
-        serializer.save(user=self.request.user)
-
-class PreferenceListView(generics.ListAPIView):
-    serializer_class = PreferenceSerializer
-    permission_classes = [AllowAny]
-
-    def get_queryset(self):
-        # Retorna as preferências do usuário logado
-        return Preference.objects.filter(user=self.request.user)
-
+    return create_response(message="Recomendações de filmes",data= movie_titles)
 
 class GenreListCreateView(generics.ListCreateAPIView):
     queryset = Genre.objects.all()  # Retorna todos os gêneros
@@ -351,9 +351,9 @@ class GenreListCreateView(generics.ListCreateAPIView):
         try:
             return super().create(request, *args, **kwargs)
         except ValidationError as e:
-            return create_response("Erro de validação", data=e.detail, status_code=status.HTTP_400_BAD_REQUEST)
+            return create_response(message="Erro de validação", data=e.detail, status_code=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return create_response(f"Erro ao criar o gênero: {str(e)}", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return create_response(message=f"Erro ao criar o gênero: {str(e)}", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def list(self, request, *args, **kwargs):
         """
@@ -362,9 +362,9 @@ class GenreListCreateView(generics.ListCreateAPIView):
         try:
             queryset = self.get_queryset()
             serializer = self.get_serializer(queryset, many=True)
-            return create_response("Lista de gêneros carregada com sucesso.", data=serializer.data)
+            return create_response(message="Lista de gêneros carregada com sucesso.", data=serializer.data,status_code=200)
         except Exception as e:
-            return create_response(f"Erro ao carregar os gêneros: {str(e)}", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return create_response(message=f"Erro ao carregar os gêneros: {str(e)}", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class GenreRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
@@ -383,11 +383,11 @@ class GenreRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             serializer.is_valid(raise_exception=True)
             self.perform_update(serializer)
 
-            return create_response("Gênero atualizado com sucesso.", data=serializer.data)
+            return create_response(message="Gênero atualizado com sucesso.", data=serializer.data,status_code=200)
         except ValidationError as e:
-            return create_response("Erro de validação", data=e.detail, status_code=status.HTTP_400_BAD_REQUEST)
+            return create_response(message="Erro de validação", data=e.detail, status_code=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return create_response(f"Erro ao atualizar o gênero: {str(e)}", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return create_response(message=f"Erro ao atualizar o gênero: {str(e)}", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, *args, **kwargs):
         """
@@ -396,6 +396,94 @@ class GenreRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         try:
             instance = self.get_object()
             instance.delete()
-            return create_response("Gênero excluído com sucesso.", status_code=status.HTTP_204_NO_CONTENT)
+            return create_response(message="Gênero excluído com sucesso.", status_code=status.HTTP_204_NO_CONTENT)
         except Exception as e:
-            return create_response(f"Erro ao excluir o gênero: {str(e)}", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return create_response(message=f"Erro ao excluir o gênero: {str(e)}", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class FavoriteMovieViewSet(viewsets.ModelViewSet):
+    queryset = FavoriteMovie.objects.all()
+    serializer_class = FavoriteMovieSerializer
+    permission_classes = [IsAuthenticated]
+
+    # Recuperar detalhes do FavoriteMovie incluindo o usuário e o filme
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()  # Pega o FavoriteMovie pela chave primária (ID)
+        serializer = self.get_serializer(instance)
+
+        # Adiciona detalhes do usuário e do filme no response
+        data = serializer.data
+        data['user'] = {
+            'id': instance.user.id,
+            'username': instance.user.username,
+            'email': instance.user.email,
+        }
+        data['movie'] = {
+            'id': instance.movie.id,
+            'title': instance.movie.title,
+            'description': instance.movie.description,
+            'release_date': instance.movie.release_date,
+            'duration': instance.movie.duration,
+            'image_url': instance.movie.image_url,
+        }
+        
+        return Response(data)
+
+# views.py
+
+class WatchedMovieViewSet(viewsets.ModelViewSet):
+    queryset = WatchedMovie.objects.all()
+    serializer_class = WatchedMovieSerializer
+    permission_classes = [IsAuthenticated]
+
+    # Recuperar detalhes do WatchedMovie incluindo o usuário e o filme
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()  # Pega o WatchedMovie pela chave primária (ID)
+        serializer = self.get_serializer(instance)
+
+        # Adiciona detalhes do usuário e do filme no response
+        data = serializer.data
+        data['user'] = {
+            'id': instance.user.id,
+            'username': instance.user.username,
+            'email': instance.user.email,
+        }
+        data['movie'] = {
+            'id': instance.movie.id,
+            'title': instance.movie.title,
+            'description': instance.movie.description,
+            'release_date': instance.movie.release_date,
+            'duration': instance.movie.duration,
+            'image_url': instance.movie.image_url,
+        }
+        
+        return Response(data)
+# views.py
+
+class LikeDislikeViewSet(viewsets.ModelViewSet):
+    queryset = LikeDislike.objects.all()
+    serializer_class = LikeDislikeSerializer
+    permission_classes = [IsAuthenticated]
+
+    # Recuperar detalhes do LikeDislike incluindo o usuário e o filme
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()  # Pega o LikeDislike pela chave primária (ID)
+        serializer = self.get_serializer(instance)
+
+        # Adiciona detalhes do usuário e do filme no response
+        data = serializer.data
+        data['user'] = {
+            'id': instance.user.id,
+            'username': instance.user.username,
+            'email': instance.user.email,
+        }
+        data['movie'] = {
+            'id': instance.movie.id,
+            'title': instance.movie.title,
+            'description': instance.movie.description,
+            'release_date': instance.movie.release_date,
+            'duration': instance.movie.duration,
+            'image_url': instance.movie.image_url,
+        }
+        
+        return Response(data)

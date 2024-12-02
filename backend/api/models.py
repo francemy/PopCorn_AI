@@ -80,3 +80,27 @@ class FavoriteMovie(models.Model):
 
     def __str__(self):
         return f'{self.user.username} favorited {self.movie.title}'
+    
+class WatchedMovie(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE)
+    watched_at = models.DateTimeField(auto_now_add=True)  # Data e hora em que o filme foi assistido
+
+    class Meta:
+        unique_together = ('user', 'movie')  # Garantir que um usuário não assista ao mesmo filme mais de uma vez
+
+    def __str__(self):
+        return f'{self.user.username} watched {self.movie.title}'
+
+
+class LikeDislike(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='likes_dislikes')
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='likes_disliked_by')
+    action = models.CharField(max_length=8, choices=[('like', 'Like'), ('dislike', 'Dislike')])
+    created_at = models.DateTimeField(auto_now_add=True)  # Data de quando a interação aconteceu
+
+    class Meta:
+        unique_together = ('user', 'movie')  # Garantir que um usuário só possa interagir com um filme uma vez (like ou dislike)
+
+    def __str__(self):
+        return f'{self.user.username} {self.action}d {self.movie.title}'

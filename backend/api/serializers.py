@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Genre, Movie, Rating, Preference
+from .models import Genre, Movie, Rating, Preference, LikeDislike, WatchedMovie, FavoriteMovie
 
 
 # Serializer para o modelo de usuário (User)
@@ -73,7 +73,8 @@ class RatingSerializer(serializers.ModelSerializer):
 
 
 class PreferenceSerializer(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    # Campos explícitos para o relacionamento e validação adicional
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False)  # O usuário será automaticamente associado
     genre = serializers.PrimaryKeyRelatedField(queryset=Genre.objects.all())
     preference_type = serializers.ChoiceField(choices=Preference._meta.get_field('preference_type').choices)
     priority = serializers.IntegerField(min_value=1, max_value=5)
@@ -81,9 +82,100 @@ class PreferenceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Preference
         fields = ['user', 'genre', 'preference_type', 'priority']
-        read_only_fields = ['user', 'genre']
+        read_only_fields = ['user']  # O usuário será definido no contexto da requisição
+
+    def validate(self, data):
+        """
+        Validações adicionais:
+        - Garante que o usuário não crie duplicatas para o mesmo gênero.
+        """
+        user = self.context['request'].user  # Obtém o usuário autenticado do contexto da requisição
+        genre = data.get('genre')
+
+        # Verifica se já existe uma preferência para esse gênero e usuário
+        if Preference.objects.filter(user=user, genre=genre).exists():
+            raise serializers.ValidationError("Já existe uma preferência para este gênero.")
+
+        # Verifica se todos os campos necessários estão preenchidos
+        if not data.get('genre'):
+            raise serializers.ValidationError("O gênero é obrigatório.")
+        if not data.get('preference_type'):
+            raise serializers.ValidationError("O tipo de preferência é obrigatório.")
+        if not data.get('priority'):
+            raise serializers.ValidationError("A prioridade é obrigatória.")
+        
+        return data
 
     def create(self, validated_data):
-        # Cria a preferência associada ao usuário e ao gênero
-        preference = Preference.objects.create(**validated_data)
+        """
+        Criação de uma nova preferência.
+        - O campo 'user' é automaticamente associado ao usuário autenticado.
+        """
+        user = self.context['request'].user  # Obtém o usuário autenticado do contexto
+        # Remove o campo user, pois ele será associado automaticamente
+        validated_data.pop('user', None)
+        
+        # Criação da preferência com o usuário autenticado
+        preference = Preference.objects.create(user=user, **validated_data)
         return preference
+    
+
+class FavoriteMovieSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField()  # Exibe o nome do usuário em vez do ID
+    movie = serializers.StringRelatedField()  # Exibe o título do filme em vez do ID
+    added_at = serializers.DateTimeField(format='%Y-%m-%d %H:%M:%S')
+
+    class Meta:
+        model = FavoriteMovie
+        fields = ['user', 'movie', 'added_at']
+
+    def create(self, validated_data):
+        return FavoriteMovie.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        instance.user = validated_data.get('user', instance.user)
+        instance.movie = validated_data.get('movie', instance.movie)
+        instance.added_at = validated_data.get('added_at', instance.added_at)
+        instance.save()
+        return instance
+    
+
+class WatchedMovieSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField()  # Exibe o nome do usuário em vez do ID
+    movie = serializers.StringRelatedField()  # Exibe o título do filme em vez do ID
+    watched_at = serializers.DateTimeField(format='%Y-%m-%d %H:%M:%S')
+
+    class Meta:
+        model = WatchedMovie
+        fields = ['user', 'movie', 'watched_at']
+
+    def create(self, validated_data):
+        return WatchedMovie.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        instance.user = validated_data.get('user', instance.user)
+        instance.movie = validated_data.get('movie', instance.movie)
+        instance.watched_at = validated_data.get('watched_at', instance.watched_at)
+        instance.save()
+        return instance
+    
+class LikeDislikeSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField()  # Exibe o nome do usuário em vez do ID
+    movie = serializers.StringRelatedField()  # Exibe o título do filme em vez do ID
+    action = serializers.ChoiceField(choices=[('like', 'Like'), ('dislike', 'Dislike')])
+    created_at = serializers.DateTimeField(format='%Y-%m-%d %H:%M:%S')
+
+    class Meta:
+        model = LikeDislike
+        fields = ['user', 'movie', 'action', 'created_at']
+
+    def create(self, validated_data):
+        return LikeDislike.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        instance.user = validated_data.get('user', instance.user)
+        instance.movie = validated_data.get('movie', instance.movie)
+        instance.action = validated_data.get('action', instance.action)
+        instance.created_at = validated_data.get('created_at', instance.created_at)
+        instance.save()
+        return instance

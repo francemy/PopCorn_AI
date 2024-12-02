@@ -12,7 +12,7 @@ const LogoutButton: React.FC = () => {
       // Enviar a requisição DELETE para a API de logout
       const response = await axios.delete('/api/session'); // Ajuste a URL de acordo com sua API
       console.log('Logout realizado com sucesso:', response.data);
-
+      localStorage.removeItem("access_token")
       // Redirecionar o usuário para a página de login após o logout
       router.push('/login');
     } catch (error) {

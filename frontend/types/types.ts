@@ -57,3 +57,25 @@ export interface User {
     genreId: number | null;  // Id do gênero para filtro, ou null para mostrar todos os filmes
   }
   
+
+  export interface UserInteractions {
+    liked: boolean;
+    favorited: boolean;
+    watched: boolean;
+  }
+  
+  // Definição do tipo para o filme
+  export interface MovieList {
+    id: number;
+    title: string;
+    description: string;
+    release_date: string;  // Data no formato "YYYY-MM-DD"
+    duration: number;      // Duração do filme em minutos
+    image_url: string;     // URL da imagem do filme
+    genres: Genre[];      // Lista de gêneros relacionados (podem ser slugs ou nomes)
+    likes_count: number;   // Número de likes do filme
+    dislikes_count: number; // Número de dislikes do filme
+    favorite_count: number; // Número de vezes que o filme foi favoritado
+    watched_count: number;  // Número de vezes que o filme foi assistido
+    user_interactions: UserInteractions;  // Interações do usuário com o filme
+  }

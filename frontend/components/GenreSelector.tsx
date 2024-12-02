@@ -7,29 +7,19 @@ import { Genre } from '@/types/types';
 
 interface GenreSelectorProps {
   onChange: (genreId: number) => void;
+  genreList: Genre[]
 }
 
-const GenreSelector: React.FC<GenreSelectorProps> = ({ onChange }) => {
+const GenreSelector: React.FC<GenreSelectorProps> = ({ onChange,genreList }) => {
   const [genres, setGenres] = useState<Genre[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedGenre, setSelectedGenre] = useState<number | string>('');  // Adicionando valor inicial vazio
 
   useEffect(() => {
-    const getGenres = async () => {
-      try {
-        const {data} = await fetchGenres();
-        if (data) {
-          setGenres(data);
-          setLoading(false); // Ao finalizar o carregamento, defina 'loading' como false
-        }
-      } catch (error) {
-        console.error('Erro ao buscar gêneros:', error);
-        setLoading(false); // Finaliza o loading mesmo se houver erro
-      }
-    };
-
-    getGenres();
-  }, []);
+      setGenres(genreList)
+      setLoading(false)
+    
+  }, [genreList]);
 
   const handleChange = (event: SelectChangeEvent<string | number>) => {
     const genreId = Number(event.target.value);

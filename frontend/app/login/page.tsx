@@ -22,11 +22,11 @@ const LoginPage: React.FC = () => {
       });
 
       // console.log(response.data)
-      const { access, refresh, user_id, username: loggedUsername, custom_data } = response.data;
+      const { access, refresh, user_id, username: loggedUsername, custom_data } = response.data.data;
       // Garantir valores válidos para os cookies
       const role = custom_data?.role || 'user'; // Valor padrão para role
       const last_login = custom_data?.last_login || new Date().toISOString(); // Substitui null por uma data padrão
-
+      localStorage.setItem("access_token",access);
       // Armazenar os dados no localStorage
       const saveCookiesResponse = await axios.post('/api/session', {
         access_token: access,

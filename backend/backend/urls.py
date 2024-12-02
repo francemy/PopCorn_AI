@@ -6,7 +6,7 @@ from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework.routers import DefaultRouter
-from api.views import GenreListCreateView, GenreRetrieveUpdateDestroyView,PreferenceCreateView, PreferenceListView,MovieListCreateView,PreferenceViewSet, RatingListCreateView, MovieByGenreView, GenreListView ,UserCreateView,get_movie_recommendations
+from api.views import GenreListCreateView, GenreRetrieveUpdateDestroyView,MovieListCreateView,PreferenceCreateView, RatingListCreateView, MovieByGenreView, GenreListView ,UserCreateView,get_movie_recommendations,FavoriteMovieViewSet, WatchedMovieViewSet, LikeDislikeViewSet
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -21,7 +21,10 @@ schema_view = get_schema_view(
    permission_classes=(permissions.AllowAny,),
 )
 router = DefaultRouter()
-router.register(r'preferences', PreferenceViewSet)
+router.register(r'preferences', PreferenceCreateView)
+router.register(r'favorite_movies', FavoriteMovieViewSet, basename='favorite_movie')
+router.register(r'watched_movies', WatchedMovieViewSet, basename='watched_movie')
+router.register(r'like_dislike', LikeDislikeViewSet, basename='like_dislike')
 
 urlpatterns = [
    path('api/genres/', GenreListView.as_view(), name='genre-list'),
@@ -36,8 +39,6 @@ urlpatterns = [
    path('api/token/refresh/', RefreshTokenObtainPairView.as_view(), name='token_refresh'),
    path('api/precommendations/', get_movie_recommendations, name='movie_recommendations'),
    path('api/', include(router.urls)),
-   path('preferences/', PreferenceListView.as_view(), name='preference-list'),
-   path('preferences/create/', PreferenceCreateView.as_view(), name='preference-create'),
    path('genres/', GenreListCreateView.as_view(), name='genre-list-create'),
    path('genres/<int:pk>/', GenreRetrieveUpdateDestroyView.as_view(), name='genre-detail'),
 ]

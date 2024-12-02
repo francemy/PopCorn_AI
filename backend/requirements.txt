@@ -1,5 +1,5 @@
 # Django
-Django>=4.0,<5.0
+Django>=5.0
 
 # Django REST Framework para criar a API
 djangorestframework>=3.12,<4.0
@@ -20,9 +20,6 @@ pytest-django>=4.0,<5.0
 scikit-learn>=1.0,<2.0    # Para algoritmos de aprendizado de máquina (caso utilize)
 numpy>=1.21,<2.0          # Biblioteca para cálculos numéricos
 
-# Se usar Algoritmos de Recomendação com Matrix Factorization
-surprise>=0.1.0
-
 # Para o gerenciamento de ambiente e variáveis de configuração
 python-dotenv>=0.19,<1.0
 
@@ -32,25 +29,26 @@ flake8>=4.0,<5.0
 # Para lidar com testes em API REST (opcional)
 requests>=2.25,<3.0
 
-drf-yasg>=2024.2
+# Para gerar documentação da API
+drf-yasg>=1.21.8
 
 # Para dados de manipulação de datas e horários
-pytz>=2021.3,<2022.0
+pytz>=2022.0
 
 # Caso deseje melhorar o desempenho de acesso ao banco de dados com cache
 #django-redis>=5.0,<6.0
 
 # Se você usar Celery para tarefas assíncronas
-celery>=5.2,<6.0
+celery>=5.0,<6.0
 
 # Bibliotecas para melhorar a segurança
 #cryptography>=3.4,<4.0
 
 # Dependência para manipulação de imagens
-Pillow>=8.0,<9.0
+# Pillow==9.4.0
 
 # Dependência para verificar CSRF
-django-csrf-cookie>=1.6,<2.0
+# django-csrf-cookie>=1.6,<2.0
 
 # Ferramenta de monitoramento de erros
 sentry-sdk>=2.0,<3.0
@@ -71,7 +69,4 @@ openpyxl>=3.0,<4.0
 channels>=4.0,<5.0
 
 # Pandas para manipulação de dados
-pandas>=1.2,<2.0
-
-# Requests para fazer requisições HTTP
-requests>=2.25,<3.0
+pandas>=1.5.3

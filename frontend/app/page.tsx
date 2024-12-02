@@ -1,10 +1,12 @@
 "use client"
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Container, Typography, Box, Button, AppBar, Toolbar, IconButton, Menu, MenuItem } from '@mui/material';
 import AddPreferenceModal from "../components/AddPreferenceModal";
 import GenreSelector from '../components/GenreSelector';
 import MovieList from '../components/MovieList';
 import LogoutButton from '../components/LogoutButton';
+import { Genre } from '@/types/types';
+import { fetchGenres } from '@/services/api';
 // Ícone para o Menu
 
 const setaBaixo: React.JSX.Element = <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
@@ -26,10 +28,26 @@ const HomePage: React.FC = () => {
   const [selectedGenre, setSelectedGenre] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [genreList,setGenreList] = useState<Genre[]>([])
 
   const handleGenreChange = (genreId: number) => {
     setSelectedGenre(genreId);
   };
+
+  useEffect(() => {
+    const getGenres = async () => {
+      try {
+        const {data} = await fetchGenres();
+        if (data) {
+          setGenreList(data as Genre[]);// Ao finalizar o carregamento, defina 'loading' como false
+        }
+      } catch (error) {
+        console.error('Erro ao buscar gêneros:', error);
+      }
+    };
+
+    getGenres();
+  }, []);
 
   // Abre o menu
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -108,6 +126,7 @@ const HomePage: React.FC = () => {
         <AddPreferenceModal
           open={modalOpen}
           onClose={() => setModalOpen(false)}
+          genres={genreList}
         />
       </Box>
 
@@ -127,7 +146,7 @@ const HomePage: React.FC = () => {
         <Typography variant="h6" gutterBottom>
           Selecione um Gênero
         </Typography>
-        <GenreSelector onChange={handleGenreChange} />
+        <GenreSelector onChange={handleGenreChange} genreList={genreList} />
       </Box>
 
       {/* Lista de Filmes */}

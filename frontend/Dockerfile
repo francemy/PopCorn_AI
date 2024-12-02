@@ -1,27 +1,33 @@
 FROM node:22.9.0-alpine
 
-# Defina o diretório de trabalho
+# Definir o diretório de trabalho
 WORKDIR /app
 
-# Copie apenas o package.json e o pnpm-lock.yaml para instalar dependências
-COPY package.json pnpm-lock.yaml ./
+# Copiar os arquivos de configuração
+COPY package.json package-lock.json ./
 
-# Instale o pnpm globalmente
-RUN npm install -g pnpm
+# Instalar as dependências do projeto
+RUN npm install
 
-# Instale as dependências do projeto
-RUN pnpm install --frozen-lockfile
-
-# Copie o restante do código do projeto, exceto o que está no .dockerignore
+# Copiar o restante dos arquivos do projeto para o contêiner
 COPY . .
-# Adicione a dependência vue-tsc como devDependency
-RUN pnpm add vue-tsc --save-dev
 
-# Execute o comando de build
-RUN pnpm run build
+# Gerar o build de produção do Next.js
+RUN npm run build
 
-# Exponha a porta do servidor
-EXPOSE 8080
+# Instalar o servidor HTTP para Next.js
+RUN npm install -g serve
 
-# Comando para rodar o servidor
-CMD ["pnpm", "run", "dev"]
+# Definir o diretório de trabalho
+WORKDIR /app
+
+# Copiar os arquivos necessários do estágio de build
+COPY --from=builder /app/package.json /app/package-lock.json ./
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+
+# Expor a porta padrão do Next.js
+EXPOSE 3000
+
+# Comando para iniciar a aplicação
+CMD ["npx", "next", "dev"]
