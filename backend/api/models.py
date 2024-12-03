@@ -44,7 +44,14 @@ class Movie(models.Model):
 class Rating(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ratings')
     movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='ratings')
-    rating = models.DecimalField(max_digits=2, decimal_places=1, choices=[(i/2, f'{i/2}') for i in range(2, 11)])  # Avaliação de 1.0 a 5.0
+    
+    # Ajuste para permitir avaliações de 1.0 a 5.0 com precisão de 0.5
+    rating = models.DecimalField(
+        max_digits=3, 
+        decimal_places=1, 
+        choices=[(i / 2, f'{i / 2}') for i in range(2, 11)]  # Avaliação de 1.0 a 5.0 com incrementos de 0.5
+    )
+    
     review = models.TextField(blank=True, null=True)  # Comentário opcional
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -84,20 +91,39 @@ class FavoriteMovie(models.Model):
 class WatchedMovie(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     movie = models.ForeignKey(Movie, on_delete=models.CASCADE)
-    watched_at = models.DateTimeField(auto_now_add=True)  # Data e hora em que o filme foi assistido
+    watch_count = models.PositiveIntegerField(default=1)  # Contagem de assistências
 
     class Meta:
-        unique_together = ('user', 'movie')  # Garantir que um usuário não assista ao mesmo filme mais de uma vez
+        unique_together = ('user', 'movie')  # Garantir que um usuário só tenha uma entrada por filme
 
     def __str__(self):
-        return f'{self.user.username} watched {self.movie.title}'
+        return f'{self.user.username} watched {self.movie.title} {self.watch_count} times'
+
+    def increment_watch_count(self):
+        """
+        Incrementa o contador de assistências (watch_count) para o filme do usuário.
+        """
+        self.watch_count += 1
+        self.save()
+
+    @staticmethod
+    def get_watch_count(user, movie):
+        """
+        Método para obter a contagem de assistências de um usuário para um filme.
+        """
+        try:
+            watched_movie = WatchedMovie.objects.get(user=user, movie=movie)
+            return watched_movie.watch_count
+        except WatchedMovie.DoesNotExist:
+            return 0
+
 
 
 class LikeDislike(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='likes_dislikes')
     movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='likes_disliked_by')
-    action = models.CharField(max_length=8, choices=[('like', 'Like'), ('dislike', 'Dislike')])
-    created_at = models.DateTimeField(auto_now_add=True)  # Data de quando a interação aconteceu
+    action = models.CharField(max_length=8, choices=[('like', 'Like'), ('dislike', 'Dislike'), ('none', 'None')])
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ('user', 'movie')  # Garantir que um usuário só possa interagir com um filme uma vez (like ou dislike)

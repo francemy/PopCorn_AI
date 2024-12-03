@@ -59,9 +59,9 @@ export interface User {
   
 
   export interface UserInteractions {
-    liked: boolean;
+    liked: 'like'| 'dislike'| 'none';
     favorited: boolean;
-    watched: boolean;
+    watched: number;
   }
   
   // Definição do tipo para o filme
@@ -78,4 +78,14 @@ export interface User {
     favorite_count: number; // Número de vezes que o filme foi favoritado
     watched_count: number;  // Número de vezes que o filme foi assistido
     user_interactions: UserInteractions;  // Interações do usuário com o filme
+    rating?: Rating[]
+  }
+  
+  export interface Rating {
+    id: number;
+    user: User;
+    movie: Movie;
+    rating: number;  // Classificação entre 1 e 5
+    review: string;  // Comentário do usuário sobre o filme
+    created_at: string;  // Data de criação da avaliação
   }

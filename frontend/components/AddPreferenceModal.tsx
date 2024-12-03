@@ -66,7 +66,7 @@ const AddPreferenceModal: React.FC<AddPreferenceModalProps> = ({
       await axios.post(
         "http://localhost:8000/api/preferences/",
         {
-          genre: selectedGenre,
+          genre: selectedGenre as number,
           preference_type: preferenceType,
           priority,
         },

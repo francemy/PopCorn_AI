@@ -2,6 +2,7 @@
 from pathlib import Path
 import os
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -19,11 +20,17 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 SIMPLE_JWT = {
+    # Tempo de expiração do Access Token: 2 dias
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=2),
+    # Tempo de expiração do Refresh Token (opcional, se necessário)
+    'REFRESH_TOKEN_LIFETIME': timedelta(hours=12),  # Exemplo: 7 dias para o refresh token
+    # Tipos de cabeçalho permitidos
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    # Mensagens de erro personalizadas
     'ERRORS': {
         'invalid_token': 'Sua solicitação contém um token inválido.',
         'expired_token': 'O token expirou, faça login novamente.',
     },
-    'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
 # Application definition

@@ -22,7 +22,9 @@ const GenreSelector: React.FC<GenreSelectorProps> = ({ onChange,genreList }) => 
   }, [genreList]);
 
   const handleChange = (event: SelectChangeEvent<string | number>) => {
+    //console.log(event.target.value)
     const genreId = Number(event.target.value);
+   // console.log(genreId)
     setSelectedGenre(genreId);  // Atualiza o estado local
     onChange(genreId);  // Chama a função onChange para passar o valor selecionado
   };
