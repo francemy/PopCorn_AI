@@ -1,4 +1,3 @@
-
 # **PopCorn AI** 🎥🍿
 
 **PopCorn AI** é uma plataforma de recomendação de filmes que oferece sugestões personalizadas com base nas preferências dos usuários. Utilizando algoritmos avançados de recomendação, a aplicação analisa dados de avaliação e preferências para criar uma experiência única para cada usuário.
@@ -251,7 +250,7 @@ O frontend da plataforma foi desenvolvido utilizando **Next.js**, um framework d
 - **Next.js:** Framework React para renderização otimizada.
 - **Axios:** Comunicação com o backend Django via API.
 - **Tailwind CSS:** Biblioteca CSS para estilização responsiva.
-- **material-ui:** biblioteca de component feitos e responsivo
+- **material-ui:** biblioteca de componentes feitos e responsivos.
 - **React Hook Form:** Gerenciamento de formulários eficiente.
 
 #### Passos:
@@ -317,77 +316,43 @@ PopCorn_AI/
 │   ├── .dockerignore
 │   ├── .eslintrc.json
 │   ├── Dockerfile
-│   ├── middleware.ts
-│   ├── next-env.d.ts
-│   ├── next.config.ts
-│   ├── package-lock.json
-│   ├── package.json
-│   ├── postcss.config.mjs
-│   ├── README.md
-│   ├── tailwind.config.ts
-│   └── tsconfig.json
-└── nginx/
+│   ├── middleware
 
+.js
+│   ├── next.config.js
+│   └── package.json
+└── README.md
 ```
-
-O comando `seed` é frequentemente utilizado para popular um banco de dados com dados iniciais ou de teste. Ele é utilizado em conjunto com comandos personalizados do Django para facilitar a inserção de registros em modelos de banco de dados, como gêneros, categorias ou usuários fictícios, para que a aplicação possa ser testada com dados realistas. 
-
-No seu caso, o comando `seed` que você está tentando usar tem como objetivo popular o banco de dados com registros de gêneros (como Ação, Comédia, etc.). Aqui está uma explicação sobre como o processo de "seeding" funciona e como usá-lo no seu projeto.
-
-### Explicação sobre o comando `seed`
-
-1. **Objetivo do Seed**: 
-   O comando `seed` é utilizado para inserir dados no banco de dados do Django de maneira automatizada. Ele é útil quando você precisa de dados de teste ou dados padrões para o funcionamento da aplicação. Por exemplo, no seu caso, o seed está populando a tabela de gêneros com registros pré-definidos de filmes, como Ação, Comédia, etc.
-
-2. **Como o Seed Funciona**:
-   O comando `seed` vai iterar por uma lista de dados definidos no comando e, para cada item (neste caso, os gêneros de filmes), vai tentar verificar se o item já existe no banco de dados. Caso não exista, ele cria o item e o adiciona ao banco de dados. Caso o item já exista, o Django vai ignorá-lo para evitar duplicação.
-
-3. **Uso do `get_or_create`**:
-   No seu comando `seed`, é utilizado o método `get_or_create`, que faz exatamente isso: ele tenta buscar um objeto no banco de dados com base em parâmetros fornecidos (como `slug` ou `name`). Se o objeto não for encontrado, ele cria um novo registro. Caso contrário, retorna o objeto existente.
-
-4. **Como Rodar o Seed**:
-   Para rodar o comando `seed`, você executa o comando da seguinte forma:
-
-   ```bash
-   python manage.py seed
-   ```
-
-   Este comando irá disparar a execução do método `handle()` que, por sua vez, vai popular o banco de dados com os dados definidos.
-
-### Exemplo no `README.md`
-
-Aqui está um exemplo de como você pode incluir essa explicação no seu arquivo `README.md`:
 
 ---
 
-## Comando Seed
+## 🛠️ **Comando Seed**
 
-O comando `seed` é utilizado para popular o banco de dados com dados iniciais ou de teste, o que facilita o desenvolvimento e a realização de testes com dados realistas. Este comando é útil para inserir informações como gêneros de filmes, categorias de produtos, ou qualquer outro dado que seja essencial para a aplicação.
+O comando `seed` é utilizado para popular o banco de dados com dados iniciais ou de teste, facilitando o desenvolvimento e a realização de testes com dados realistas. Esse comando é útil para inserir informações como gêneros de filmes ou outros dados essenciais para a aplicação.
 
 ### Como Utilizar o Comando Seed
 
 1. **Instalar as dependências**:
-   Certifique-se de que todas as dependências estão instaladas, incluindo as dependências do Django e qualquer outra que o projeto possa exigir.
+   Certifique-se de que todas as dependências estão instaladas:
 
    ```bash
    pip install -r requirements.txt
    ```
 
 2. **Rodar o Seed**:
-   O comando para popular o banco de dados com dados iniciais pode ser executado da seguinte forma:
+   Para popular o banco de dados com dados iniciais (como gêneros de filmes), execute:
 
    ```bash
    python manage.py seed
    ```
 
-   Esse comando irá:
-
-   - Iterar sobre uma lista de gêneros de filmes predefinidos.
-   - Criar registros para cada gênero no banco de dados, caso ainda não existam.
+   Este comando irá:
+   - Inserir os gêneros de filmes predefinidos no banco de dados, caso ainda não existam.
    - Ignorar os registros que já existem, evitando duplicações.
 
 ### Personalizando o Comando Seed
 
+<<<<<<< HEAD
 Se você precisar adicionar ou modificar os dados a serem populados, basta editar o arquivo de comando `seed.py`, localizado em `backend/api/management/commands/seed.py`. Você pode adicionar novos itens na lista de gêneros ou qualquer outro tipo de dado relevante para a aplicação.
 
 #### Exemplo de dados:
@@ -617,11 +582,11 @@ Esta API oferece funcionalidades para gerenciar filmes, preferências de gênero
 ### Como Funciona o `get_or_create`
 
 O método `get_or_create` tenta buscar um registro no banco de dados baseado no parâmetro fornecido (neste caso, `slug`). Se o registro já existir, ele retorna o objeto existente; caso contrário, cria um novo.
+=======
+Para adicionar ou modificar os dados a serem populados, edite o arquivo `seed.py` localizado em `backend/api/management/commands/seed.py`.
+>>>>>>> 75c00042b761ce01cb2a088c48567e846b851ee1
 
 ---
-
-Com essas informações no seu `README.md`, qualquer desenvolvedor ou colaborador que for utilizar o comando `seed` no projeto poderá entender o seu funcionamento e como usá-lo para popular o banco de dados de forma eficiente.
-
 
 ## 📄 **Licença**
 
@@ -633,9 +598,10 @@ Este projeto está licenciado sob a [MIT License](LICENSE).
 
 - **Francemy Eduardo Sebastião**  
   Desenvolvedor Full Stack | Angola  
-  🌍 Luanda, Angola  
+  🌍 Luanda, Angola 
 
+- **Nome:** Francemy Eduardo Sebastião
+- **Contato:** [francemysebastiaofrancemy@gmail.com](mailto:gelson23tg@gmail.com)
+- **GitHub:** ([https://github.com/seuusuario](https://github.com/francemy))
 Sinta-se à vontade para contribuir ou relatar problemas!
 ```
-
-Esse modelo é um ponto de partida para documentar o projeto. Você pode adicionar detalhes específicos conforme o desenvolvimento avança.
