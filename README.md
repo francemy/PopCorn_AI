@@ -302,9 +302,10 @@ Este projeto está licenciado sob a [MIT License](LICENSE).
 
 - **Francemy Eduardo Sebastião**  
   Desenvolvedor Full Stack | Angola  
-  🌍 Luanda, Angola  
+  🌍 Luanda, Angola 
 
+- **Nome:** Francemy Eduardo Sebastião
+- **Contato:** [francemysebastiaofrancemy@gmail.com](mailto:gelson23tg@gmail.com)
+- **GitHub:** ([https://github.com/seuusuario](https://github.com/francemy))
 Sinta-se à vontade para contribuir ou relatar problemas!
 ```
-
-Agora, o `README.md` está ajustado, com a explicação sobre o comando `seed` incorporada corretamente, sem mudar a estrutura original.
