@@ -47,7 +47,7 @@ const RatingModal: React.FC<RatingModalProps> = ({ open, onClose, id_movie }) =>
         enqueueSnackbar(errorData.message || 'Erro ao salvar avaliação', { variant: 'error' });
       }
     } catch (error) {
-      enqueueSnackbar('Erro de rede. Tente novamente mais tarde.', { variant: 'error' });
+      enqueueSnackbar('Erro de rede. Tente novamente mais tarde.'+error, { variant: 'error' });
     }
   };
 

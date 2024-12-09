@@ -1,5 +1,5 @@
-"use client"
-import React, { useState } from 'react';
+"use client";
+import React, { useMemo, useState } from 'react';
 import { TextField, Button } from '@mui/material';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
@@ -9,10 +9,12 @@ const RegisterPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [preference, setPreference] = useState(''); // Novo estado para preferência
+  const [firstName, setFirstName] = useState(''); // Novo estado para o primeiro nome
+  const [lastName, setLastName] = useState(''); // Novo estado para o sobrenome
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const baseURL = useMemo(()=>process.env.NEXT_PUBLIC_API_URL_URL|| "http://backend:8000/api/",[])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,19 +28,20 @@ const RegisterPage: React.FC = () => {
     setLoading(true);
     try {
       // Enviar a requisição de registro para o backend Django
-      const response = await axios.post('http://localhost:8000/api/register/', {
+      const response = await axios.post(baseURL+'register/', {
         username,
         email,
         password,
-        preference, // Enviar a preferência junto com os outros dados
+        first_name: firstName, // Enviar o primeiro nome
+        last_name: lastName, // Enviar o sobrenome
       });
 
       // Se o registro for bem-sucedido, redirecionar para a página de login
       if (response.status === 201) {
         router.push('/login');
       }
-    } catch {
-      setError('Erro ao registrar. Tente novamente.');
+    } catch (error) {
+      setError('Erro ao registrar. Tente novamente.'+error);
     } finally {
       setLoading(false);
     }
@@ -93,14 +96,26 @@ const RegisterPage: React.FC = () => {
             />
           </div>
 
-          {/* Campo de Preferência */}
+          {/* Novo campo para o primeiro nome */}
           <div className="mb-4">
             <TextField
-              label="Preferência"
+              label="Primeiro Nome"
               variant="outlined"
               fullWidth
-              value={preference}
-              onChange={(e) => setPreference(e.target.value)}
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="mb-4"
+            />
+          </div>
+
+          {/* Novo campo para o sobrenome */}
+          <div className="mb-4">
+            <TextField
+              label="Sobrenome"
+              variant="outlined"
+              fullWidth
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
               className="mb-4"
             />
           </div>

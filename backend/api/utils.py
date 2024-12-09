@@ -6,6 +6,39 @@ from rest_framework import status
 from sklearn.neighbors import NearestNeighbors
 import numpy as np
 
+from .models import Preference,LikeDislike,Movie,Rating
+
+def adjust_user_preferences(user, genres, action, weight):
+    """
+    Ajusta as preferências do usuário para uma lista de gêneros.
+
+    :param user: Usuário para ajustar as preferências.
+    :param genres: Lista de gêneros a serem ajustados.
+    :param action: Tipo de ação ('favorite', 'avoid').
+    :param weight: Peso da ação (positivo ou negativo).
+    """
+    for genre in genres:
+        # Busca ou cria a preferência
+        preference, created = Preference.objects.get_or_create(
+            user=user,
+            genre=genre,
+            defaults={"priority": weight}  # Inicializa prioridade ao criar
+        )
+        
+        # Se a preferência já existia, ajusta o valor
+        if not created:
+            if action == "favorite":
+                preference.priority += weight
+            elif action == "avoid":
+                preference.priority -= weight  # Peso negativo reduz preferência
+            
+            # Evitar valores negativos extremos, opcional
+            preference.priority = max(preference.priority, 0)
+            print(" # Se a preferência já existia, ajusta o valor")
+        
+        # Salva a instância
+        preference.save()
+
 def get_movie_interactions(movie):
     """
     Função para retornar a contagem de likes, favoritos e assistidos de um filme.
@@ -68,7 +101,30 @@ def recommend_movies_based_on_likes(user):
     
     return recommended_movies
 
+def calculate_movie_score(self, movie, user):
+    """
+    Função para calcular a pontuação do filme baseado no histórico de interações e preferências do usuário.
+    """
+    score = 0
+    # Pontuação baseada nas interações do usuário com o filme
+    user_interactions = get_user_interactions(movie, user)
+    if user_interactions.get('liked'):
+        score += 2
+    elif user_interactions.get('disliked'):
+        score -= 2
 
+    # Pontuação baseada no gênero do filme
+    for genre in movie.genres.all():
+        if genre.id in self.get_user_favorite_genre_ids(user):
+            score += 1  # Aumenta a pontuação se o gênero é favorito
+
+    return score
+
+def get_user_favorite_genre_ids(self, user):
+    """
+    Retorna os IDs dos gêneros favoritos do usuário
+    """
+    return Preference.objects.filter(user=user, preference_type="favorite").values_list('genre_id', flat=True)
 
 def recommend_movies_with_knn(user):
     # Criar uma matriz de interações de usuários e filmes

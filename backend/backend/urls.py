@@ -5,10 +5,10 @@ from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework.routers import DefaultRouter
-from api.views import (VerifyTokenView,PersonalizedRecommendationsViewOrdeby, GenreListCreateView,
-                        DashboardView, GenreRetrieveUpdateDestroyView, MovieListCreateView, 
-                       PreferenceCreateView, RatingCreateUpdateView, GenreListView, UserCreateView, ContentBasedRecommendationsView1,
-                       FavoriteMovieViewSet, WatchedMovieViewSet, LikeDislikeViewSet
+from api.views import (VerifyTokenView,PersonalizedRecommendationsViewOrdeby,
+                        DashboardView, MovieListCreateView, 
+                       PreferenceCreateView, RatingCreateUpdateView, GenreListView, UserCreateView,
+                       FavoriteMovieViewSet, WatchedMovieViewSet, LikeDislikeViewSet,PreferenceListView
                        )
 
 # Gerador da documentação Swagger
@@ -33,9 +33,7 @@ router.register(r'watched_movies', WatchedMovieViewSet, basename='watched_movie'
 router.register(r'like_dislike', LikeDislikeViewSet, basename='like_dislike')
 # URLs da API
 urlpatterns = [
-    path('api/movies/genre/', ContentBasedRecommendationsView1.as_view(), name='list-movie-genre'),
-    path('api/movies/views/', ContentBasedRecommendationsView1.as_view(), name='list-movie-views '),
-
+    path('api/preferences/list', PreferenceListView.as_view(), name='preference-list'),
     path('api/dashboard/', DashboardView.as_view(), name='dashboard'),
     path('api/genres/', GenreListView.as_view(), name='genre-list'),
     path('api/movies/', MovieListCreateView.as_view(), name='movie-list-create'),
@@ -49,6 +47,4 @@ urlpatterns = [
     path('api/token/refresh/', RefreshTokenObtainPairView.as_view(), name='token_refresh'),
     path('api/verify-token/', VerifyTokenView.as_view(), name='verify-token'),
     path('api/', include(router.urls)),
-    path('genres/', GenreListCreateView.as_view(), name='genre-list-create'),
-    path('genres/<int:pk>/', GenreRetrieveUpdateDestroyView.as_view(), name='genre-detail'),
 ]

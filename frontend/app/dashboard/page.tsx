@@ -20,7 +20,8 @@ import {
   Skeleton,
   useMediaQuery,
   useTheme,
-  TablePagination
+  TablePagination,
+  Container
 } from '@mui/material';
 import { 
   PieChart, 
@@ -41,7 +42,7 @@ import {
 } from '@mui/icons-material';
 
 // Importação das tipagens
-import { MovieList, Genre, Rating, UserInteractions } from '@/types/types';
+import { MovieList, Genre } from '@/types/types';
 import api from '@/services/api';
 
 // Tipo da resposta do dashboard
@@ -108,6 +109,7 @@ const MovieDashboard: React.FC = () => {
   }, []);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    event.stopPropagation();
     setSelectedTab(newValue);
   };
 
@@ -239,12 +241,14 @@ const MovieTableWithPagination: React.FC<MovieTableWithPaginationProps> = ({ mov
     const [page, setPage] = useState<number>(0);
   
     // Função para mudar a página
-    const handleChangePage = (event: unknown, newPage: number) => {
+    const handleChangePage = (event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
+      event?.preventDefault();
       setPage(newPage);
     };
   
     // Função para controlar o número de linhas por página
     const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+      event.stopPropagation();
       setPage(0); // Resetar para a primeira página ao mudar o número de linhas por página
     };
   
@@ -252,7 +256,7 @@ const MovieTableWithPagination: React.FC<MovieTableWithPaginationProps> = ({ mov
     const paginatedMovies:MovieList[] = movies.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
   
     return (
-      <Card>
+      <Container>
         <CardHeader title="Top Movies" />
         <CardContent>
           <TableContainer component={Paper}>
@@ -297,7 +301,7 @@ const MovieTableWithPagination: React.FC<MovieTableWithPaginationProps> = ({ mov
             onRowsPerPageChange={handleChangeRowsPerPage}
           />
         </CardContent>
-      </Card>
+      </Container>
     );
   };
 

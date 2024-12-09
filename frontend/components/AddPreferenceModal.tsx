@@ -1,4 +1,5 @@
-import { useState } from "react";
+"use client"
+import { useEffect, useState } from "react";
 import axios from "axios";
 import {
   Modal,
@@ -13,23 +14,40 @@ import {
   InputLabel,
 } from "@mui/material";
 import { Genre } from "@/types/types";
+import { fetchGenres } from "@/services/api";
 
 interface AddPreferenceModalProps {
   open: boolean;
   onClose: () => void;
-  genres: Genre[];
+ 
 }
 
 const AddPreferenceModal: React.FC<AddPreferenceModalProps> = ({
   open,
   onClose,
-  genres,
 }) => {
   const [selectedGenre, setSelectedGenre] = useState<number | "">("");
   const [preferenceType, setPreferenceType] = useState<string>("favorite");
   const [priority, setPriority] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [genreList,setGenreList]=useState<Genre[]>([])
+
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        // Buscar gêneros
+        const { data: genres } = await fetchGenres();
+        if (genres) {
+          setGenreList(genres as Genre[]);
+        }
+       
+      } catch (error) {
+        console.error('Erro ao carregar dados iniciais:', error);
+      }
+    };
+    fetchInitialData();
+  }, []);
 
   // Função para validar os campos do formulário
   const validateForm = (): boolean => {
@@ -125,7 +143,7 @@ const AddPreferenceModal: React.FC<AddPreferenceModalProps> = ({
             value={selectedGenre}
             onChange={(e) => setSelectedGenre(Number(e.target.value))}
           >
-            {genres.map((genre) => (
+            {genreList.map((genre) => (
               <MenuItem key={genre.id} value={genre.id}>
                 {genre.name}
               </MenuItem>

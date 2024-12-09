@@ -1,6 +1,6 @@
 // app/login/page.tsx
 "use client"
-import React, { useState } from 'react';
+import React, {useState } from 'react';
 import { TextField, Button, Typography } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
@@ -13,10 +13,12 @@ const LoginPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log(process.env.NEXT_PUBLIC_API_URL);
 
     try {
+
       // Enviar a requisição de login para o backend Django
-      const response = await axios.post('http://localhost:8000/api/token/', {
+      const response = await axios.post((process.env.NEXT_PUBLIC_API_URL|| "http://backend:8000/api/")+'token/', {
         username,
         password,
       });
@@ -37,7 +39,9 @@ const LoginPage: React.FC = () => {
         last_login: last_login,
       });
       if (saveCookiesResponse.status === 200) {
-        router.push('/');
+       
+        router.refresh()
+        console.log("não roteou! ",saveCookiesResponse.status);
       } else {
         setError('Erro ao salvar os dados da sessão.');
         console.error(saveCookiesResponse);

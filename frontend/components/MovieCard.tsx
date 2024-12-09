@@ -1,24 +1,24 @@
 import React, { useState } from "react";
-import { 
-  Card, 
-  CardContent, 
-  Typography, 
-  CardMedia, 
-  Button, 
-  Box, 
-  IconButton, 
+import {
+  Card,
+  CardContent,
+  Typography,
+  CardMedia,
+  Box,
+  IconButton,
   Tooltip,
-  Modal,
   useMediaQuery
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { 
-  Favorite as FavoriteIcon, 
+import {
+  Favorite as FavoriteIcon,
   FavoriteBorder as FavoriteBorderIcon,
-  ThumbUp as ThumbUpIcon, 
-  ThumbUpOutlined as ThumbUpOutlinedIcon, 
-  ThumbDown as ThumbDownIcon, 
-  ThumbDownOutlined as ThumbDownOutlinedIcon
+  ThumbUp as ThumbUpIcon,
+  ThumbUpOutlined as ThumbUpOutlinedIcon,
+  ThumbDown as ThumbDownIcon,
+  ThumbDownOutlined as ThumbDownOutlinedIcon,
+  PlayCircle,
+  NoteAltOutlined
 } from "@mui/icons-material";
 import { truncateText } from "@/utils";
 import { MovieList } from "@/types/types";
@@ -27,16 +27,15 @@ import RatingModal from "@/components/RatingModal"; // Importando o componente R
 
 interface MovieCardProps {
   movie: MovieList;
-  onWatch?: (movieId: number) => void;
 }
 
-const MovieCard: React.FC<MovieCardProps> = ({ movie, onWatch }) => {
+const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const [isFavorite, setIsFavorite] = useState(movie.user_interactions.favorited);
-  const [likeStatus, setLikeStatus] = useState<'none' | 'like' | 'dislike'>(movie?.user_interactions?.liked || 'none');
-  const [isModalOpen, setIsModalOpen] = useState(false); // Estado para a RatingModal
+  const [likeStatus, setLikeStatus] = useState<'none' | 'like' | 'dislike'>(movie?.user_interactions?.liked);
+  // const [isModalOpen, setIsModalOpen] = useState(false); // Estado para a RatingModal
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false); // Estado para controlar a modal de avaliação
 
   const safeTitle = movie.title || "Título não disponível";
@@ -47,6 +46,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onWatch }) => {
   const descriptionMaxLength = isMobile ? 50 : 100;
 
   const handleFavorite = async (e: React.MouseEvent) => {
+    
     e.stopPropagation();
     const token = localStorage.getItem("access_token");
     try {
@@ -108,7 +108,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onWatch }) => {
     }
   };
 
-  const handleWatch = async (movieId: any) => {
+  const handleWatch = async (movieId: number) => {
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
@@ -146,7 +146,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onWatch }) => {
   };
 
   return (
-    <Card sx={{ width: "100%",padding: 2,justifyContent:"center", maxWidth: 345, height: "100%", display: "flex", flexDirection: "column", transition: "transform 0.2s", "&:hover": { transform: "scale(1.03)", boxShadow: theme.shadows[4] }, }} elevation={2}>
+    <Card sx={{ width: "100%", justifyContent: "center", maxWidth: 345, height: "100%", display: "flex", flexDirection: "column", transition: "transform 0.2s", "&:hover": { transform: "scale(1.03)", boxShadow: theme.shadows[4] }, }} elevation={2}>
       <Box position="relative">
         <CardMedia
           component="img"
@@ -166,7 +166,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onWatch }) => {
           </Tooltip>
         </Box>
       </Box>
-      <CardContent sx={{ flexGrow: 1 }} onClick={() => setIsModalOpen(true)}>
+      <CardContent sx={{ flexGrow: 1 }} >
         <Typography variant="h6" component="div" gutterBottom sx={{ fontSize: isMobile ? "1rem" : "1.25rem", fontWeight: 600 }}>
           {truncateText(safeTitle, titleMaxLength)}
         </Typography>
@@ -174,8 +174,8 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onWatch }) => {
           {truncateText(safeDescription, descriptionMaxLength)}
         </Typography>
       </CardContent>
-      <Box sx={{ p: 2, pt: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Box display="flex" alignItems="center">
+      <div className="relative flex flex-row ">
+        
           <Tooltip title="Gostei">
             <div>
               <IconButton onClick={handleLike} color={likeStatus === "like" ? "primary" : "default"}>
@@ -190,16 +190,16 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onWatch }) => {
               </IconButton>
             </div>
           </Tooltip>
-        </Box>
         <Tooltip title="Assistir">
-          <Button variant="contained" color="primary" size={isMobile ? "small" : "medium"} onClick={e => { e.stopPropagation(); handleWatch(movie.id); }} sx={{ width: isMobile ? "auto" : "100%", maxWidth: 200 }}>
-            Assistir
-          </Button>
+          <IconButton color="primary" onClick={e => { e.stopPropagation(); handleWatch(movie.id); }} sx={{ width: "auto", maxWidth: 200 }}>
+            <PlayCircle />
+          </IconButton>
         </Tooltip>
-        <Button variant="outlined" color="primary" onClick={openRatingModal}>
-          Avaliar
-        </Button>
-      </Box>
+        <Tooltip title="avaliar o filme">
+          <IconButton color="primary" onClick={openRatingModal}>
+            <NoteAltOutlined />
+          </IconButton></Tooltip>
+      </div>
 
       {/* Modal de Detalhes do Filme */}
       <RatingModal open={isRatingModalOpen} onClose={closeRatingModal} id_movie={movie.id} />

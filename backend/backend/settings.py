@@ -1,7 +1,6 @@
 
 from pathlib import Path
 import os
-from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.

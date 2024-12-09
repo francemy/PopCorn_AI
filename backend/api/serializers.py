@@ -1,12 +1,15 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.db import transaction
+from decimal import Decimal
 from .models import Genre, Movie, Rating, Preference, LikeDislike, WatchedMovie, FavoriteMovie
+from .utils import adjust_user_preferences
 
 
 # Serializer para o modelo de usuário (User)
 class UserSerializer(serializers.ModelSerializer):
-    preference = serializers.CharField(required=False)
+    preferences = serializers.JSONField(required=False)  # Aceita um JSON com as preferências
+
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name']
@@ -16,21 +19,38 @@ class UserSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
+        preferences_data = validated_data.pop('preferences', None)
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password']
         )
+        if preferences_data:
+            self._update_preferences(user, preferences_data)
         return user
 
     def update(self, instance, validated_data):
-        # Permite que o usuário atualize a senha se for necessário
-        password = validated_data.pop('password', None)
+        preferences_data = validated_data.pop('preferences', None)
         instance = super().update(instance, validated_data)
-        if password:
-            instance.set_password(password)
-            instance.save()
+        if preferences_data:
+            self._update_preferences(instance, preferences_data)
         return instance
+
+    def _update_preferences(self, user, preferences_data):
+        """
+        Atualiza ou cria preferências para o usuário com base no JSON fornecido.
+        """
+        for pref in preferences_data:
+            genre_name = pref.get('genre')
+            priority = pref.get('priority')
+            if genre_name and priority is not None:
+                genre, _ = Genre.objects.get_or_create(name=genre_name)
+                Preference.objects.update_or_create(
+                    user=user,
+                    genre=genre,
+                    defaults={'priority': priority}
+                )
+
 
 
 # Serializer para o modelo de Gênero (Genre)
@@ -56,11 +76,6 @@ class MovieSerializer(serializers.ModelSerializer):
             movie.genres.add(genre)
         return movie
 
-
-# Serializer para o modelo de Avaliação (Rating)
-from rest_framework import serializers
-from decimal import Decimal
-from .models import Rating, User, Movie
 
 class RatingSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False)  # Para criação, ID do usuário
@@ -110,51 +125,38 @@ class PreferenceSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Já existe uma preferência para este gênero.")
         
         return data
-    
-class FavoriteMovieSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField()  # Exibe o nome do usuário em vez do ID
-    movie = serializers.StringRelatedField()  # Exibe o título do filme em vez do ID
-    added_at = serializers.DateTimeField(format='%Y-%m-%d %H:%M:%S')
-
-    class Meta:
-        model = FavoriteMovie
-        fields = ['user', 'movie', 'added_at']
-
     def create(self, validated_data):
-        return FavoriteMovie.objects.create(**validated_data)
+        # Criação da preferência
+        return Preference.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
-        instance.user = validated_data.get('user', instance.user)
-        instance.movie = validated_data.get('movie', instance.movie)
-        instance.added_at = validated_data.get('added_at', instance.added_at)
+        # Atualização da preferência
+        instance.preference_type = validated_data.get('preference_type', instance.preference_type)
+        instance.priority = validated_data.get('priority', instance.priority)
         instance.save()
         return instance
 
-    def create_or_update_preference(self, user, movie):
+    def create_or_update_preference(self, user, genre, preference_type, priority):
         """
-        Cria ou atualiza as preferências de gênero com base no filme favorito.
-        A prioridade do gênero é incrementada quando o filme é favoritado.
+        Cria ou atualiza a preferência de gênero de um usuário.
         """
-        for genre in movie.genres.all():
-            preference, created = Preference.objects.get_or_create(user=user, genre=genre)
-            # Aumenta a prioridade do gênero, mas com um limite de 5
-            if preference.priority < 5:
-                preference.priority += 1
-            preference.save()
-
-    def save(self, **kwargs):
-        """
-        Sobrescreve o método save para incluir o ajuste das preferências de gênero.
-        """
-        instance = super().save(**kwargs)
+        preference, created = Preference.objects.get_or_create(user=user, genre=genre)
         
-        # Ajusta a preferência de gênero com base no filme favorito
-        self.create_or_update_preference(instance.user, instance.movie)
-        
-        return instance
+        # Ajusta a preferência
+        preference.preference_type = preference_type
+        preference.priority = min(max(preference.priority + priority, 1), 5)  # Limita entre 1 e 5
+        preference.save()
 
+        return preference
+
+class PreferenceListSerializer(serializers.ModelSerializer):
+    nome_genre = serializers.CharField(source='genre.name')  # Supondo que 'genre' tenha o campo 'name'
+    nome_user = serializers.CharField(source='user.username')  # Supondo que o modelo User tem o campo 'username'
+
+    class Meta:
+        model = Preference
+        fields = ['id', 'nome_genre', 'preference_type', 'priority', 'nome_user']
     
-
 class WatchedMovieSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
     movie = serializers.PrimaryKeyRelatedField(queryset=Movie.objects.all())
@@ -164,25 +166,27 @@ class WatchedMovieSerializer(serializers.ModelSerializer):
         model = WatchedMovie
         fields = ['id', 'user', 'movie', 'watch_count']
 
-    def create(self, validated_data):
-        user = validated_data['user']
-        movie = validated_data['movie']
-
-        # Verifica se o usuário já assistiu ao filme
-        watched_movie, created = WatchedMovie.objects.get_or_create(user=user, movie=movie)
-
+    def save(self, **kwargs):
+        # Criação ou incremento do contador de assistências
+        instance, created = WatchedMovie.objects.get_or_create(
+            user=self.validated_data['user'],
+            movie=self.validated_data['movie'],
+            defaults={'watch_count': 1}
+        )
         if not created:
-            watched_movie.watch_count += 1
-            watched_movie.save()
+            instance.watch_count += 1
+            instance.save()
 
-        # Ajusta a preferência do gênero após o filme ser assistido
-        for genre in movie.genres.all():
-            preference, created = Preference.objects.get_or_create(user=user, genre=genre)
-            preference.priority = min(preference.priority + 1, 5)  # Aumenta a prioridade de gênero
-            preference.save()
-
-        return watched_movie
+        # Ajusta as preferências de gênero com base no filme assistido
+        adjust_user_preferences(
+            user=instance.user,
+            genres=instance.movie.genres.all(),
+            action="favorite",
+            weight=1
+        )
+        return instance
     
+
 class LikeDislikeSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField()
     movie = serializers.StringRelatedField()
@@ -191,28 +195,41 @@ class LikeDislikeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = LikeDislike
-        fields = ['user', 'movie', 'action', 'created_at']
+        fields = ['id', 'user', 'movie', 'action', 'created_at']
 
-    def create(self, validated_data):
-        # Criação do Like/Dislike
-        like_dislike = super().create(validated_data)
+    def save(self, **kwargs):
+        instance = super().save(**kwargs)
 
-        # Ajuste das preferências do usuário com base na ação
-        user = validated_data['user']
-        movie = validated_data['movie']
-        action = validated_data['action']
+        # Ajusta as preferências de gênero com base na ação
+        weight = 1 if instance.action == "like" else -1
+        action = "favorite" if instance.action == "like" else "avoid"
 
-        if action == 'like':
-            # Se o usuário curtir um filme, aumentar a preferência por esse gênero
-            for genre in movie.genres.all():
-                preference, created = Preference.objects.get_or_create(user=user, genre=genre)
-                preference.priority = min(preference.priority + 1, 5)  # Limitar a prioridade no máximo 5
-                preference.save()
-        elif action == 'dislike':
-            # Se o usuário descurtir um filme, diminuir a preferência por esse gênero
-            for genre in movie.genres.all():
-                preference, created = Preference.objects.get_or_create(user=user, genre=genre)
-                preference.priority = max(preference.priority - 1, 1)  # Limitar a prioridade no mínimo 1
-                preference.save()
+        adjust_user_preferences(
+            user=instance.user,
+            genres=instance.movie.genres.all(),
+            action=action,
+            weight=weight
+        )
+        return instance
 
-        return like_dislike
+class FavoriteMovieSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField()
+    movie = serializers.StringRelatedField()
+    added_at = serializers.DateTimeField(format='%Y-%m-%d %H:%M:%S')
+
+    class Meta:
+        model = FavoriteMovie
+        fields = ['user', 'movie', 'added_at']
+
+    def save(self, **kwargs):
+        instance = super().save(**kwargs)
+
+        # Ajusta as preferências de gênero com base no filme favorito
+        adjust_user_preferences(
+            user=instance.user,
+            genres=instance.movie.genres.all(),
+            action='favorite',
+            weight=1
+        )
+        return instance
+

@@ -5,13 +5,12 @@ import {
   Grid,
   Typography,
   CircularProgress,
-  useMediaQuery,
   Container,
   Pagination
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 
-import { fetchMovieRecommendations, fetchMovies } from '../services/api';
+import { fetchMovies } from '../services/api';
 import MovieCard from './MovieCard';
 import { Genre, MovieList } from '@/types/types';
 
@@ -25,17 +24,16 @@ const MovieListP: React.FC<MovieListProps> = ({ genreId }) => {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);  // Estado para controlar a página
   const [moviesPerPage] = useState(12); // Número de filmes por página
+  const [currentMovies, setCurrentMovies] = useState<MovieList[]>([]);
+
+  useEffect(() => {
+    const indexOfLastMovie = page * moviesPerPage;
+    const indexOfFirstMovie = indexOfLastMovie - moviesPerPage;
+    const currentMoviesSlice = movies.slice(indexOfFirstMovie, indexOfLastMovie);
+    setCurrentMovies(currentMoviesSlice);
+  }, [page, movies, moviesPerPage]);
 
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
-
-  // Determine grid columns based on screen size
-  const getGridColumns = () => {
-    if (isMobile) return 2;
-    if (isTablet) return 3;
-    return 4;
-  };
 
   useEffect(() => {
     const getMovies = async () => {
@@ -44,7 +42,7 @@ const MovieListP: React.FC<MovieListProps> = ({ genreId }) => {
         setLoading(true);
 
         if (genreId === 0) {
-          const { data } = await fetchMovieRecommendations();
+          const { data } = await fetchMovies();
 
           setMovies(data);
         }
@@ -75,10 +73,6 @@ const MovieListP: React.FC<MovieListProps> = ({ genreId }) => {
     setPage(value); // Atualiza a página
   };
 
-  // Filmes a serem exibidos para a página atual
-  const indexOfLastMovie = page * moviesPerPage;
-  const indexOfFirstMovie = indexOfLastMovie - moviesPerPage;
-  const currentMovies = movies.slice(indexOfFirstMovie, indexOfLastMovie);
 
   if (loading) {
     return (
@@ -164,7 +158,7 @@ const MovieListP: React.FC<MovieListProps> = ({ genreId }) => {
         {currentMovies.map((movie, index) => (
           <Grid
             item
-            key={movie.id || index}
+            key={ index+"mov-s"+movie.id}
             xs={2}
             sm={4}
             md={3}

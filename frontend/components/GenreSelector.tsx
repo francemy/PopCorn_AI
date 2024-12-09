@@ -1,7 +1,6 @@
 // components/GenreSelector.tsx
 "use client"
 import React, { useEffect, useState } from 'react';
-import { fetchGenres } from '../services/api';
 import { FormControl, InputLabel, Select, MenuItem, CircularProgress, SelectChangeEvent } from '@mui/material';
 import { Genre } from '@/types/types';
 

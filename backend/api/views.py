@@ -6,12 +6,10 @@ from rest_framework_simplejwt.tokens import RefreshToken,AccessToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.decorators import api_view
 
-from .machineLern import build_interaction_matrix, build_knn_model, recommend_movies_collaborative
 from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.decorators import action
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.feature_extraction.text import TfidfVectorizer
 from django.contrib.auth import authenticate
 import pandas as pd
 from .models import Movie, Rating, Genre,Preference,LikeDislike,WatchedMovie,FavoriteMovie
@@ -23,11 +21,17 @@ from .serializers import (
     PreferenceSerializer,
     FavoriteMovieSerializer,
     WatchedMovieSerializer,
-    LikeDislikeSerializer
+    LikeDislikeSerializer,
+    PreferenceListSerializer
 )
-from .utils import get_movie_interactions, get_user_interactions,create_response  # Importando a função
-from django.db.models import Avg,Count,Q
-from .machineLern import build_interaction_matrix, build_knn_model, recommend_movies_collaborative, recommend_movies_content_based, recommend_movies_user_based
+from .utils import create_response,get_movie_interactions,get_user_interactions,adjust_user_preferences,calculate_movie_score,get_user_favorite_genre_ids  # Importando a função
+from django.db.models import Avg,Count,Q,F
+
+class PreferenceListView(generics.ListAPIView):
+    permission_classes = [AllowAny]
+    queryset = Preference.objects.all()  # ou qualquer filtro que você precise
+    serializer_class = PreferenceListSerializer
+
 
 class PreferenceCreateView(viewsets.ModelViewSet):
     queryset = Preference.objects.all()
@@ -66,29 +70,46 @@ class PreferenceCreateView(viewsets.ModelViewSet):
             status_code=400
         )
 
-
-
 class UserCreateView(APIView):
     """
     View para criação de usuários.
     """
-    #authentication_classes = [JWTAuthentication]
     permission_classes = [AllowAny]
 
     def post(self, request):
-        serializer = UserSerializer(data=request.data)
+        # Ajusta os dados para enviar apenas os campos necessários
+        data = request.data
+        serializer = UserSerializer(data={
+            'username': data.get('username'),
+            'email': data.get('email'),
+            'password': data.get('password'),
+            'first_name': data.get('first_name'),
+            'last_name': data.get('last_name'),
+        })
+        
         if serializer.is_valid():
+            # Salva o usuário
             user = serializer.save()
+
             return create_response(
                 message="Usuário criado com sucesso.",
                 data={
+                    "id": user.id,
                     "username": user.username,
                     "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
                 },
-                status_code=200,
+                status_code=201,  # Código de sucesso para criação
             )
-        return create_response(message="Erro na criação do usuário.",data=serializer.errors, status_code=400)
-    
+
+        # Caso o serializer não seja válido, retorna erro com as falhas
+        return create_response(
+            message="Erro na criação do usuário.",
+            data=serializer.errors,
+            status_code=400,  # Código de erro para falha na validação
+        )
+
 class VerifyTokenView(APIView):
     """
     View para verificar se o token de acesso é válido.
@@ -169,18 +190,35 @@ class RatingCreateUpdateView(APIView):
         """
         Cria ou atualiza uma avaliação para o filme.
         Se a avaliação já existir, atualiza a avaliação, caso contrário, cria uma nova.
+        Além disso, ajusta a preferência do usuário com base na avaliação.
         """
         movie_id = request.data.get('movie')
         user = request.user
-        
+        rating_value = request.data.get('rating')  # Exemplo de valor da avaliação (de 1 a 5)
+
         # Verifica se o usuário já avaliou esse filme
         existing_rating = Rating.objects.filter(user=user, movie_id=movie_id).first()
+
+        # Função para ajustar as preferências com base na avaliação
+        def adjust_preferences_based_on_rating(action, weight):
+            try:
+                movie = Movie.objects.get(id=movie_id)
+                adjust_user_preferences(user, movie.genres.all(), action, weight)  # Ajusta a preferência do usuário
+            except Movie.DoesNotExist:
+                pass
 
         # Se já existe uma avaliação, atualiza a avaliação
         if existing_rating:
             serializer = RatingSerializer(existing_rating, data=request.data, partial=True, context={'request': request})
             if serializer.is_valid():
-                serializer.save()  # Atualiza a avaliação com os novos dados
+                updated_rating = serializer.save()  # Atualiza a avaliação com os novos dados
+
+                # Ajusta a preferência baseada na avaliação
+                if rating_value >= 3:
+                    adjust_preferences_based_on_rating('favorite', 1)
+                elif rating_value <= 2:
+                    adjust_preferences_based_on_rating('avoid', -1)
+
                 return create_response(
                     message='Avaliação atualizada com sucesso.',
                     data=serializer.data,
@@ -198,7 +236,14 @@ class RatingCreateUpdateView(APIView):
             request.data['user'] = user.id  # Associando automaticamente o usuário autenticado
             serializer = RatingSerializer(data=request.data, context={'request': request})
             if serializer.is_valid():
-                serializer.save()  # Cria a nova avaliação
+                created_rating = serializer.save()  # Cria a nova avaliação
+
+                # Ajusta a preferência baseada na avaliação
+                if rating_value >= 4:
+                    adjust_preferences_based_on_rating('favorite', 1)
+                elif rating_value <= 2:
+                    adjust_preferences_based_on_rating('avoid', -1)
+
                 return create_response(
                     message='Avaliação criada com sucesso.',
                     data=serializer.data,
@@ -210,7 +255,6 @@ class RatingCreateUpdateView(APIView):
                     data=serializer.errors,
                     status_code=400
                 )
-
 
 
 class MovieListCreateView(APIView):
@@ -275,82 +319,6 @@ class GenreListView(APIView):
         serializer = GenreSerializer(genres, many=True)
         return create_response(message="Lista de gêneros recuperada com sucesso.", data=serializer.data)
 
-class GenreListCreateView(generics.ListCreateAPIView):
-    queryset = Genre.objects.all()  # Retorna todos os gêneros
-    serializer_class = GenreSerializer
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticatedOrReadOnly]
-
-    def perform_create(self, serializer):
-        # Validação de dados antes de criar um novo gênero
-        genre_name = serializer.validated_data.get('name', '').strip()
-        if not genre_name:
-            raise ValidationError({"message": "O nome do gênero é obrigatório."})
-
-        # Verificar se o nome do gênero já existe
-        if Genre.objects.filter(name=genre_name).exists():
-            raise ValidationError({"message": "Já existe um gênero com esse nome."})
-
-        # Se tudo estiver certo, cria o gênero
-        serializer.save()
-
-    def create(self, request, *args, **kwargs):
-        """
-        Sobrescreve a função de criação para retornar uma resposta personalizada.
-        """
-        try:
-            return super().create(request, *args, **kwargs)
-        except ValidationError as e:
-            return create_response(message="Erro de validação", data=e.detail, status_code=400)
-        except Exception as e:
-            return create_response(message=f"Erro ao criar o gênero: {str(e)}", status_code=500)
-
-    def list(self, request, *args, **kwargs):
-        """
-        Sobrescreve a função de listagem para retornar uma resposta personalizada.
-        """
-        try:
-            queryset = self.get_queryset()
-            serializer = self.get_serializer(queryset, many=True)
-            return create_response(message="Lista de gêneros carregada com sucesso.", data=serializer.data,status_code=200)
-        except Exception as e:
-            return create_response(message=f"Erro ao carregar os gêneros: {str(e)}", status_code=500)
-
-
-class GenreRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Genre.objects.all()  # Gêneros disponíveis para edição e exclusão
-    serializer_class = GenreSerializer
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def update(self, request, *args, **kwargs):
-        """
-        Sobrescreve a função de atualização para retornar uma resposta personalizada.
-        """
-        try:
-            instance = self.get_object()
-            serializer = self.get_serializer(instance, data=request.data, partial=True)
-            serializer.is_valid(raise_exception=True)
-            self.perform_update(serializer)
-
-            return create_response(message="Gênero atualizado com sucesso.", data=serializer.data,status_code=200)
-        except ValidationError as e:
-            return create_response(message="Erro de validação", data=e.detail, status_code=400)
-        except Exception as e:
-            return create_response(message=f"Erro ao atualizar o gênero: {str(e)}", status_code=500)
-
-    def destroy(self, request, *args, **kwargs):
-        """
-        Sobrescreve a função de exclusão para retornar uma resposta personalizada.
-        """
-        try:
-            instance = self.get_object()
-            instance.delete()
-            return create_response(message="Gênero excluído com sucesso.", status_code=204)
-        except Exception as e:
-            return create_response(message=f"Erro ao excluir o gênero: {str(e)}", status_code=500)
-        
-
 
 class DashboardView(APIView):
     """
@@ -409,6 +377,138 @@ class DashboardView(APIView):
             data=dashboard_data
         )
     
+# class PersonalizedRecommendationsViewOrdeby(APIView):
+#     """
+#     Gera recomendações de filmes personalizadas no formato esperado.
+#     """
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         user = request.user
+
+#         # 1. Obter gêneros favoritos do usuário
+#         favorite_genre_ids = Preference.objects.filter(user=user, preference_type="favorite")\
+#                                                  .order_by('-priority')\
+#                                                  .values_list('genre_id', flat=True)
+
+#         # 2. Excluir filmes já assistidos ou avaliados negativamente
+#         watched_movie_ids = WatchedMovie.objects.filter(user=user).values_list('movie_id', flat=True)
+#         disliked_movie_ids = LikeDislike.objects.filter(user=user, action="dislike").values_list('movie_id', flat=True)
+
+#         # Combine os dois conjuntos no Python
+#         excluded_movie_ids = set(watched_movie_ids) | set(disliked_movie_ids)
+
+#         # 3. Buscar filmes baseados nos gêneros favoritos e excluir os já assistidos/avaliados
+#         movies = Movie.objects.filter(
+#             Q(genres__id__in=favorite_genre_ids)
+#         ).exclude(
+#             id__in=excluded_movie_ids
+#         ).distinct()
+#         movie_list = []
+#         for movie in movies:
+#             movie_info = MovieSerializer(movie).data  # Serializa os dados básicos do filme
+#             interactions = get_movie_interactions(movie)  # Obtém as interações gerais
+#             user_interactions = get_user_interactions(movie, user)  # Obtém as interações do usuário logado
+#             # Atualiza as interações específicas do usuário
+#             movie_info['user_interactions'] = user_interactions
+#             # Atualiza as interações gerais no filme
+#             movie_info.update(interactions)
+
+#             movie_list.append(movie_info)
+
+#         # 5. Retornar a lista de filmes
+#         return create_response(
+#             message="Recomendações personalizadas com base nas suas preferências.",
+#             data=movie_list,
+#             status_code=200
+#         )
+class PersonalizedRecommendationsViewOrdeby(APIView):
+    """
+    Gera recomendações de filmes personalizadas no formato esperado.
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        # 1. Obter gêneros favoritos do usuário, considerando prioridades e intensidade de preferência
+        favorite_genre_ids = Preference.objects.filter(user=user, preference_type="favorite")\
+                                                 .order_by('-priority')\
+                                                 .values_list('genre_id', flat=True)
+
+        # 2. Obter gêneros secundários ou similares, se o usuário tem filmes avaliados positivamente em outros gêneros
+        secondary_genre_ids = Preference.objects.filter(user=user, preference_type="favorite")\
+                                                 .exclude(genre_id__in=favorite_genre_ids)\
+                                                 .values_list('genre_id', flat=True)
+
+        # 3. Excluir filmes já assistidos ou avaliados negativamente
+        watched_movie_ids = WatchedMovie.objects.filter(user=user).values_list('movie_id', flat=True)
+        disliked_movie_ids = LikeDislike.objects.filter(user=user, action="dislike").values_list('movie_id', flat=True)
+        
+        # Combine os dois conjuntos no Python
+        excluded_movie_ids = set(watched_movie_ids) | set(disliked_movie_ids)
+
+        # 4. Buscar filmes baseados nos gêneros favoritos e secundários e excluir os já assistidos/avaliados
+        movies = Movie.objects.filter(
+            Q(genres__id__in=favorite_genre_ids) | Q(genres__id__in=secondary_genre_ids)
+        ).exclude(
+            id__in=excluded_movie_ids
+        ).distinct()
+
+        # 5. Calcular a pontuação para cada filme, com base na interação do usuário
+        movie_list = []
+        for movie in movies:
+            movie_info = MovieSerializer(movie).data  # Serializa os dados básicos do filme
+            interactions = get_movie_interactions(movie)  # Obtém as interações gerais do filme
+            user_interactions = get_user_interactions(movie, user)  # Obtém as interações do usuário com o filme
+
+            # Ajuste da pontuação do filme
+            movie_score = self.calculate_movie_score(movie, user, favorite_genre_ids, secondary_genre_ids)  # Função para calcular a pontuação
+
+            # Atualiza as interações e a pontuação do filme
+            movie_info['user_interactions'] = user_interactions
+            movie_info.update(interactions)
+            movie_info['score'] = movie_score
+
+            movie_list.append(movie_info)
+
+        # 6. Retornar a lista de filmes com a pontuação
+        return create_response(
+            message="Recomendações personalizadas com base nas suas preferências.",
+            data=movie_list,
+            status_code=200
+        )
+
+    def calculate_movie_score(self, movie, user, favorite_genre_ids, secondary_genre_ids):
+        """
+        Função para calcular a pontuação do filme baseada nas preferências de gênero e interações do usuário.
+        """
+        score = 0
+
+        # Pontuação baseada nos gêneros favoritos, com pesos de prioridade
+        for genre in movie.genres.all():
+            if genre.id in favorite_genre_ids:
+                # Peso maior para gêneros favoritos
+                preference = Preference.objects.get(user=user, genre=genre)
+                score += 2 * preference.priority  # Prioridade influencia o peso
+
+            if genre.id in secondary_genre_ids:
+                # Peso menor para gêneros secundários
+                score += 1  # Peso básico
+
+        # Pontuação baseada nas interações do usuário
+        user_interactions = get_user_interactions(movie, user)
+        if user_interactions.get('liked'):
+            score += 3  # Aumenta a pontuação se o usuário gostou
+        elif user_interactions.get('disliked'):
+            score -= 3  # Diminui a pontuação se o usuário não gostou
+
+        return score
+  
+
+
 class FavoriteMovieViewSet(viewsets.ModelViewSet):
     queryset = FavoriteMovie.objects.all()
     serializer_class = FavoriteMovieSerializer
@@ -456,9 +556,12 @@ class FavoriteMovieViewSet(viewsets.ModelViewSet):
         favorite_movie, created = FavoriteMovie.objects.get_or_create(user=user, movie=movie)
 
         if created:
+            # Ajusta as preferências do usuário para os gêneros do filme favoritado
+            adjust_user_preferences(user, movie.genres.all(), action='favorite', weight=1)
             return create_response(message='Filme adicionado aos favoritos com sucesso.', status_code=201)
         else:
             return create_response(message='O filme já está nos favoritos.', status_code=200)
+
 
 class WatchedMovieViewSet(viewsets.ModelViewSet):
     queryset = WatchedMovie.objects.all()
@@ -506,21 +609,25 @@ class WatchedMovieViewSet(viewsets.ModelViewSet):
         try:
             movie = Movie.objects.get(id=movie_id)
         except Movie.DoesNotExist:
-            return create_response({'message': 'Filme não encontrado'}, status=404)
+            return create_response(message='Filme não encontrado', status_code=404)
 
         # Marca o filme como assistido ou atualiza o contador
         watched_movie, created = WatchedMovie.objects.get_or_create(user=user, movie=movie)
 
         if created:
             # Se o filme for marcado pela primeira vez como assistido
-            watched_movie.watch_count = 1  # Inicializa o contador de assistências
+            watched_movie.watch_count = 1
             watched_movie.save()
+
+            # Ajusta as preferências do usuário para os gêneros do filme assistido
+            adjust_user_preferences(user, movie.genres.all(), action='favorite', weight=1)
             return create_response(message='Filme marcado como assistido com sucesso.', status_code=201)
         else:
             # Se o filme já foi assistido, incrementa o contador
             watched_movie.watch_count += 1
             watched_movie.save()
             return create_response(message='O filme já foi assistido. Contador incrementado.', status_code=200)
+
 
 
 class LikeDislikeViewSet(viewsets.ModelViewSet):
@@ -550,7 +657,7 @@ class LikeDislikeViewSet(viewsets.ModelViewSet):
             'image_url': instance.movie.image_url,
         }
         
-        return create_response(message="feito",data=data)
+        return create_response(message="feito", data=data)
 
     @action(detail=False, methods=['post'])
     def like_dislike_action(self, request):
@@ -561,385 +668,33 @@ class LikeDislikeViewSet(viewsets.ModelViewSet):
         action = request.data.get('action')
         user = request.user
 
+        # Garantir que o filme exista
+        try:
+            movie = Movie.objects.get(id=movie_id)
+        except Movie.DoesNotExist:
+            return create_response(
+                message="Filme não encontrado.",
+                status_code=404
+            )
+
         # Garantir que a ação seja válida
         if action not in ['like', 'dislike', 'none']:
-            return create_response(message="error Ação inválida.", status_code=400)
+            return create_response(
+                message="Ação inválida. Escolha entre 'like', 'dislike' ou 'none'.",
+                status_code=400
+            )
 
         # Verifica se já existe uma interação para esse usuário e filme
         like_dislike_instance, created = LikeDislike.objects.update_or_create(
-            user=user, movie_id=movie_id,
+            user=user, movie=movie,
             defaults={'action': action}
         )
 
-        return create_response(message="Ação de like/dislike realizada com sucesso.", data=LikeDislikeSerializer(like_dislike_instance).data, status_code=200)
+        # Ajustar preferências do usuário com base na ação
+        if action == 'like':
+            adjust_user_preferences(user, movie.genres.all(), action='favorite', weight=1)
+        elif action == 'dislike':
+            adjust_user_preferences(user, movie.genres.all(), action='avoid', weight=-1)
 
-
-class PersonalizedRecommendationsViewOrdeby(APIView):
-    """
-    Gera recomendações de filmes personalizadas no formato esperado.
-    """
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-
-        # 1. Obter gêneros favoritos do usuário
-        favorite_genres = Preference.objects.filter(user=user, preference_type="favorite").order_by('-priority')
-        favorite_genre_ids = [pref.genre.id for pref in favorite_genres]
-
-        # 2. Excluir filmes já assistidos ou avaliados negativamente
-        watched_movie_ids = WatchedMovie.objects.filter(user=user).values_list('movie_id', flat=True)
-        disliked_movie_ids = LikeDislike.objects.filter(user=user, action="dislike").values_list('movie_id', flat=True)
-        excluded_movie_ids = set(watched_movie_ids).union(disliked_movie_ids)
-
-        # 3. Filtrar filmes baseados nos gêneros favoritos e excluir os já assistidos/avaliados
-        movies = (
-            Movie.objects.filter(
-                Q(genres__id__in=favorite_genre_ids)
-            )
-            .exclude(id__in=excluded_movie_ids)
-            .distinct()
-            .annotate(
-                likes_count=Count('likes_disliked_by', filter=Q(likes_disliked_by__action="like")),
-                dislikes_count=Count('likes_disliked_by', filter=Q(likes_disliked_by__action="dislike")),
-                favorite_count=Count('favorited_by'),
-                watched_count=Count('users_watched'),
-                avg_rating=Avg('ratings__rating'),  # Média das avaliações
-            )
-            .prefetch_related('genres')  # Otimiza a busca dos gêneros relacionados
-            .order_by(
-                F('avg_rating').desc(nulls_last=True),  # Ordena por rating (nulos vão para o final)
-                F('watched_count').desc(),             # Depois por número de assistências
-                F('likes_count').desc()                # Depois por likes
-            )
-        )
-
-        # 4. Preparar o formato esperado
-        liked_disliked_movies = LikeDislike.objects.filter(user=user)
-        favorited_movies = FavoriteMovie.objects.filter(user=user)
-        watched_movies = WatchedMovie.objects.filter(user=user)
-
-        movie_list = []
-        for movie in movies:
-            # Obter interações do usuário logado com o filme
-            user_liked_disliked = liked_disliked_movies.filter(movie=movie).first()
-            user_favorited = favorited_movies.filter(movie=movie).exists()
-            user_watched = watched_movies.filter(movie=movie).first()
-
-            user_interactions = {
-                "liked": user_liked_disliked.action if user_liked_disliked else "none",
-                "favorited": user_favorited,
-                "watched": user_watched.watch_count if user_watched else 0,
-            }
-
-            movie_data = {
-                "id": movie.id,
-                "title": movie.title,
-                "description": movie.description,
-                "release_date": movie.release_date.strftime("%Y-%m-%d"),
-                "duration": movie.duration,
-                "image_url": movie.image_url,
-                "genres": [genre.name for genre in movie.genres.all()],
-                "likes_count": movie.likes_count,
-                "dislikes_count": movie.dislikes_count,
-                "favorite_count": movie.favorite_count,
-                "watched_count": movie.watched_count,
-                "user_interactions": user_interactions,
-                "rating": movie.avg_rating,
-            }
-
-            movie_list.append(movie_data)
-
-        # 5. Retornar a lista de filmes no formato esperado
-        return create_response(
-            message="Recomendações personalizadas com base nas suas preferências.",
-            data=movie_list,
-            status_code=200
-        )
-
-
-class CollaborativeRecommendationsView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, format=None):
-        user=request.user
-        # Carregar a matriz de interações
-        interaction_matrix = build_interaction_matrix()
-        
-        # Construir o modelo KNN
-        knn = build_knn_model(interaction_matrix)
-        
-        # Obter as recomendações colaborativas
-        
-        recommended_movie_ids = [movie_id for movie_id in recommended_movie_ids if isinstance(movie_id, int)]
-
-        
-        liked_disliked_movies = LikeDislike.objects.filter(user=user)
-        favorited_movies = FavoriteMovie.objects.filter(user=user)
-        watched_movies = WatchedMovie.objects.filter(user=user)
-        # Criar a resposta com as informações detalhadas dos filmes recomendados
-        movie_list = []
-        for movie in Movie.objects.filter(id__in=recommended_movie_ids):
-            user_liked_disliked = liked_disliked_movies.filter(movie=movie).first()
-            user_favorited = favorited_movies.filter(movie=movie).exists()
-            user_watched = watched_movies.filter(movie=movie).first()
-
-            user_interactions = {
-                "liked": user_liked_disliked.action if user_liked_disliked else "none",
-                "favorited": user_favorited,
-                "watched": user_watched.watch_count if user_watched else 0,
-            }
-            movie_data = {
-                "id": movie.id,
-                "title": movie.title,
-                "description": movie.description,
-                "release_date": movie.release_date.strftime("%Y-%m-%d"),
-                "duration": movie.duration,
-                "image_url": movie.image_url,
-                "genres": [genre.name for genre in movie.genres.all()],
-                "likes_count": movie.likes_count,
-                "dislikes_count": movie.dislikes_count,
-                "favorite_count": movie.favorite_count,
-                "watched_count": movie.watched_count,
-                "user_interactions": user_interactions,
-                "rating": movie.avg_rating,
-            }
-            movie_list.append(movie_data)
-        
-        # Retornar a resposta no formato desejado
-        return create_response(
-            message="Recomendações personalizadas com base nas suas preferências.",
-            data=movie_list,
-            status_code=200
-        )
-
-
-class ContentBasedRecommendationsView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, format=None):
-        # Carregar os filmes e calcular similaridades
-        user = request.user
-        movie_id = 1
-        movies_data = []
-        for movie in Movie.objects.all():
-            genres_str = ', '.join([genre.name for genre in movie.genres.all()])
-            movie_id = movie.id
-            movies_data.append({'movie_id': movie.id, 'title': movie.title, 'genres': genres_str})
-        
-        movies_df = pd.DataFrame(movies_data)
-        tfidf = TfidfVectorizer(stop_words='english')
-        tfidf_matrix = tfidf.fit_transform(movies_df['genres'])
-        cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
-
-        # Obter as recomendações baseadas em conteúdo
-        recommended_movies = recommend_movies_content_based(movie_id, cosine_sim, movies_df)
-
-        liked_disliked_movies = LikeDislike.objects.filter(user=user)
-        favorited_movies = FavoriteMovie.objects.filter(user=user)
-        watched_movies = WatchedMovie.objects.filter(user=user)
-        # Criar a resposta com as informações detalhadas dos filmes recomendados
-        movie_list = []
-        for movie in Movie.objects.filter(id__in=recommended_movies):
-            user_liked_disliked = liked_disliked_movies.filter(movie=movie).first()
-            user_favorited = favorited_movies.filter(movie=movie).exists()
-            user_watched = watched_movies.filter(movie=movie).first()
-
-            user_interactions = {
-                "liked": user_liked_disliked.action if user_liked_disliked else "none",
-                "favorited": user_favorited,
-                "watched": user_watched.watch_count if user_watched else 0,
-            }
-            movie_data = {
-                "id": movie.id,
-                "title": movie.title,
-                "description": movie.description,
-                "release_date": movie.release_date.strftime("%Y-%m-%d"),
-                "duration": movie.duration,
-                "image_url": movie.image_url,
-                "genres": [genre.name for genre in movie.genres.all()],
-                "likes_count": movie.likes_count,
-                "dislikes_count": movie.dislikes_count,
-                "favorite_count": movie.favorite_count,
-                "watched_count": movie.watched_count,
-                "user_interactions": user_interactions,
-                "rating": movie.avg_rating,
-            }
-            movie_list.append(movie_data)
-        
-        # Retornar a resposta no formato desejado
-        return create_response(
-            message="Recomendações personalizadas com base nas suas preferências.",
-            data=movie_list,
-            status_code=200
-        )
-
-class ContentBasedRecommendationsView1(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, format=None):
-        user = request.user
-
-        # Obter os filmes curtidos pelo usuário
-        liked_movies = LikeDislike.objects.filter(user=user, action='like').values_list('movie_id', flat=True)
-
-        if liked_movies.exists():
-            # Usar os filmes curtidos para calcular recomendações
-            movies_data = []
-            for movie in Movie.objects.all():
-                genres_str = ', '.join([genre.name for genre in movie.genres.all()])
-                movies_data.append({'movie_id': movie.id, 'title': movie.title, 'genres': genres_str})
-            
-            movies_df = pd.DataFrame(movies_data)
-            tfidf = TfidfVectorizer(stop_words='english')
-            tfidf_matrix = tfidf.fit_transform(movies_df['genres'])
-            cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
-
-            # Gerar as recomendações para todos os filmes curtidos
-            recommended_movie_ids = set()
-            for liked_movie_id in liked_movies:
-                recommended_ids = recommend_movies_content_based(liked_movie_id, cosine_sim, movies_df)
-                recommended_movie_ids.update(recommended_ids)
-        else:
-            # Caso não existam filmes curtidos, recomendar filmes populares ou genéricos
-            recommended_movie_ids = Movie.objects.order_by('-likes_count')[:10].values_list('id', flat=True)
-
-        # Criar a resposta com os dados dos filmes recomendados
-        recommended_movies = Movie.objects.filter(id__in=recommended_movie_ids).distinct()
-        liked_disliked_movies = LikeDislike.objects.filter(user=user)
-        favorited_movies = FavoriteMovie.objects.filter(user=user)
-        watched_movies = WatchedMovie.objects.filter(user=user)
-
-        movie_list = []
-        for movie in recommended_movies:
-            user_liked_disliked = liked_disliked_movies.filter(movie=movie).first()
-            user_favorited = favorited_movies.filter(movie=movie).exists()
-            user_watched = watched_movies.filter(movie=movie).first()
-
-            user_interactions = {
-                "liked": user_liked_disliked.action if user_liked_disliked else "none",
-                "favorited": user_favorited,
-                "watched": user_watched.watch_count if user_watched else 0,
-            }
-            movie_data = {
-                "id": movie.id,
-                "title": movie.title,
-                "description": movie.description,
-                "release_date": movie.release_date.strftime("%Y-%m-%d"),
-                "duration": movie.duration,
-                "image_url": movie.image_url,
-                "genres": [genre.name for genre in movie.genres.all()],
-                "likes_count": movie.likes_count,
-                "dislikes_count": movie.dislikes_count,
-                "favorite_count": movie.favorite_count,
-                "watched_count": movie.watched_count,
-                "user_interactions": user_interactions,
-                "rating": movie.avg_rating,
-            }
-            movie_list.append(movie_data)
-        
-        # Retornar a resposta no formato desejado
-        return create_response(
-            message="Recomendações personalizadas com base em suas interações.",
-            data=movie_list,
-            status_code=200
-        )
-class HybridRecommendationsView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, format=None):
-        user = request.user
-
-        # Carregar a matriz de interações e o modelo KNN
-        interaction_matrix = build_interaction_matrix()  # Matriz de interações do sistema
-        knn = build_knn_model(interaction_matrix)  # Modelo KNN para usuários
-
-        # Obter preferências do usuário logado
-        liked_movies = LikeDislike.objects.filter(user=user, action='like').values_list('movie_id', flat=True)
-        preferred_genres = Preference.objects.filter(user=user).values_list('genre', flat=True)
-
-        # Filmes recomendados por conteúdo e gêneros
-        movies_data = []
-        for movie in Movie.objects.all():
-            genres_str = ', '.join([genre.name for genre in movie.genres.all()])
-            movies_data.append({'movie_id': movie.id, 'title': movie.title, 'genres': genres_str})
-
-        movies_df = pd.DataFrame(movies_data)
-        tfidf = TfidfVectorizer(stop_words='english')
-        tfidf_matrix = tfidf.fit_transform(movies_df['genres'])
-        cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
-
-        # Combinar métodos: híbrido (KNN + Conteúdo)
-        recommended_movies = set()
-
-        if liked_movies.exists():
-            # Recomendações baseadas no conteúdo
-            for liked_movie_id in liked_movies:
-                content_recommendations = recommend_movies_content_based(
-                    liked_movie_id, cosine_sim, movies_df
-                )
-                recommended_movies.update(content_recommendations)
-
-            # Recomendações baseadas no usuário (KNN)
-            user_based_recommendations = recommend_movies_user_based(
-                user.id, interaction_matrix, knn
-            )
-            recommended_movies.update(user_based_recommendations)
-        else:
-            # Caso não haja interações, sugerir filmes com base nos gêneros favoritos ou populares
-            if preferred_genres:
-                recommended_movies = set(
-                    Movie.objects.filter(genres__in=preferred_genres).order_by('-likes_count')[:10].values_list('id', flat=True)
-                )
-            else:
-                recommended_movies = set(Movie.objects.order_by('-likes_count')[:10].values_list('id', flat=True))
-
-        # Organizar interações do usuário (evitar múltiplas consultas no banco dentro do loop)
-        liked_disliked_movies = LikeDislike.objects.filter(user=user)
-        favorited_movies = FavoriteMovie.objects.filter(user=user)
-        watched_movies = WatchedMovie.objects.filter(user=user)
-
-        # Organizando os dados de interações em dicionários para consulta eficiente
-        liked_disliked_dict = {ld.movie_id: ld.action for ld in liked_disliked_movies}
-        favorited_dict = {fm.movie_id: fm for fm in favorited_movies}
-        watched_dict = {wm.movie_id: wm for wm in watched_movies}
-
-        # Buscar filmes recomendados do banco de dados
-        recommended_movies_queryset = Movie.objects.filter(id__in=recommended_movies).distinct()
-
-        movie_list = []
-        for movie in recommended_movies_queryset:
-            user_liked_disliked = liked_disliked_dict.get(movie.id, 'none')
-            user_favorited = favorited_dict.get(movie.id, False)
-            user_watched = watched_dict.get(movie.id, None)
-
-            user_interactions = {
-                "liked": user_liked_disliked,
-                "favorited": user_favorited,
-                "watched": user_watched.watch_count if user_watched else 0,
-            }
-
-            movie_data = {
-                "id": movie.id,
-                "title": movie.title,
-                "description": movie.description,
-                "release_date": movie.release_date.strftime("%Y-%m-%d"),
-                "duration": movie.duration,
-                "image_url": movie.image_url,
-                "genres": [genre.name for genre in movie.genres.all()],
-                "likes_count": movie.likes_count,
-                "dislikes_count": movie.dislikes_count,
-                "favorite_count": movie.favorite_count,
-                "watched_count": movie.watched_count,
-                "user_interactions": user_interactions,
-                "rating": movie.avg_rating,
-            }
-            movie_list.append(movie_data)
-
-        # Retornar a resposta
-        return create_response(
-            message="Recomendações personalizadas com base nas suas preferências e interações.",
-            data=movie_list,
-            status_code=200
-        )
+        message = "Ação de like/dislike realizada com sucesso."
+        return create_response(message=message, data=LikeDislikeSerializer(like_dislike_instance).data, status_code=200)

@@ -103,5 +103,6 @@ seed:
     python manage.py seed
 
 create-db:
+	python manage.py makemigrations api
     python manage.py makemigrations
     python manage.py migrate

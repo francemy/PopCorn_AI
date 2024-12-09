@@ -11,7 +11,7 @@ djangorestframework-simplejwt>=5.0,<6.0
 django-cors-headers>=3.10,<4.0
 
 # Para migrações do banco de dados e manipulação do ORM
-#psycopg2>=2.9,<3.0  # Caso use PostgreSQL, se usar SQLite, não é necessário
+psycopg2>=2.9,<3.0  # Caso use PostgreSQL, se usar SQLite, não é necessário
 
 # Biblioteca para testes de APIs
 pytest-django>=4.0,<5.0
@@ -19,7 +19,8 @@ pytest-django>=4.0,<5.0
 # Para processamento de dados e recomendações
 scikit-learn>=1.0,<2.0    # Para algoritmos de aprendizado de máquina (caso utilize)
 numpy>=1.21,<2.0          # Biblioteca para cálculos numéricos
-
+gunicorn
+django-environ
 # Para o gerenciamento de ambiente e variáveis de configuração
 python-dotenv>=0.19,<1.0
 
@@ -36,7 +37,7 @@ drf-yasg>=1.21.8
 pytz>=2022.0
 
 # Caso deseje melhorar o desempenho de acesso ao banco de dados com cache
-#django-redis>=5.0,<6.0
+django-redis>=5.0,<6.0
 
 # Se você usar Celery para tarefas assíncronas
 celery>=5.0,<6.0
@@ -57,7 +58,7 @@ sentry-sdk>=2.0,<3.0
 pytest-cov>=3.0,<4.0
 
 # Para comunicação com Redis
-# redis>=4.0,<5.0
+redis>=4.0,<5.0
 
 # Caso use GraphQL
 # graphene-django>=3.0,<4.0

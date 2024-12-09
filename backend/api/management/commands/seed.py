@@ -1,4 +1,3 @@
-
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -7,6 +6,7 @@ import ast
 from datetime import datetime
 from django.utils.text import slugify
 from api.models import Movie, Genre  # Certifique-se de importar corretamente seus modelos
+from api.OMDbAPI import fetch_movie_by_title
 
 class Command(BaseCommand):
     help = 'Cria gêneros, usuários e filmes no banco de dados'
@@ -140,11 +140,20 @@ class Command(BaseCommand):
         # Criando os filmes
         self.stdout.write(self.style.SUCCESS('Criando filmes...'))
         df = pd.read_csv('movies_metadata.csv', low_memory=False)
-        df_movies = df.head(600)  # Para fins de exemplo, vamos pegar apenas os primeiros 100 filmes
+        df_movies = df.head(3000)  # Para fins de exemplo, vamos pegar apenas os primeiros 100 filmes
         
         def create_movie(movie_data):
             title = movie_data['title']
             if Movie.objects.filter(title=title).exists():
+                movietest = Movie.objects.get(title=title)
+                genres_data = ast.literal_eval(movie_data['genres'])
+                genres = []
+                for genre in genres_data:
+                    genre_name = genre['name']
+                    genre, created = Genre.objects.get_or_create(name=genre_name)
+                    genres.append(existing_genre)
+                movietest.genres.set(genres)
+                movietest.save()
                 self.stdout.write(self.style.WARNING(f"Filme '{title}' já existe no banco de dados."))
                 return None
             
@@ -159,6 +168,12 @@ class Command(BaseCommand):
                 genre_name = genre['name']
                 existing_genre, created = Genre.objects.get_or_create(name=genre_name)
                 genres.append(existing_genre)
+            
+            movie_response = fetch_movie_by_title(title)
+            if movie_response:
+                poster_url = movie_response.get('Poster')
+                if poster_url and poster_url != 'N/A':
+                    image_url =poster_url
 
             movie = Movie(
                 title=title,
@@ -178,3 +193,4 @@ class Command(BaseCommand):
             create_movie(row)
 
         self.stdout.write(self.style.SUCCESS('Dados de gêneros, usuários e filmes criados com sucesso!'))
+  
