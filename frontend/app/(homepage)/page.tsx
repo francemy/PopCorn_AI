@@ -5,14 +5,13 @@ import {
 } from '@mui/material';
 import GenreSelector from '@/components/GenreSelector';
 import MovieListP from '@/components/MovieList';
-import { Genre, MovieList } from '@/types/types';
-import { fetchGenres, fetchMovieRecommendations } from '@/services/api';
+import { Genre } from '@/types/types';
+import { fetchGenres } from '@/services/api';
 import MovieLisRecomendado from '@/components/MoviesRecomend';
 
 const HomePage: React.FC = () => {
   const [selectedGenre, setSelectedGenre] = useState<number | null>(null);
   const [genreList, setGenreList] = useState<Genre[]>([]);
-  const [recommendedMovies, setRecommendedMovies] = useState<MovieList[]>([]);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -23,10 +22,7 @@ const HomePage: React.FC = () => {
           setGenreList(genres as Genre[]);
         }
         // Buscar recomendações de filmes
-        const {data} = await fetchMovieRecommendations();
-        if (data) {
-          setRecommendedMovies(data);
-        }
+       
       } catch (error) {
         console.error('Erro ao carregar dados iniciais:', error);
       }
@@ -81,7 +77,7 @@ const HomePage: React.FC = () => {
             <Typography variant="h5" gutterBottom>
               Filmes Recomendados
             </Typography>
-            <MovieLisRecomendado movies={recommendedMovies} />
+            <MovieLisRecomendado />
           </Box>
         </Grid>
       </Grid>

@@ -1,41 +1,49 @@
-import React, { useState } from 'react';
-import { Box, Typography, Button } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Box, Typography, Button, Card } from '@mui/material';
 import { MovieList } from '@/types/types';
 import MovieCard from './MovieCardRecomend';
+import { fetchMovieRecommendations } from '@/services/api';
 
-interface MovieListProps {
-  movies: MovieList[];
-}
+const MovieListRecomendado: React.FC = () => {
+  const [currentPage, setCurrentPage] = useState(1); // Página inicial
+  const [recommendedMovies, setRecommendedMovies] = useState<MovieList[]>([]);
+  const [nextPageUrl, setNextPageUrl] = useState<string | null>(null); // URL da próxima página
+  const [loading, setLoading] = useState(true)
 
-const MovieListRecomendado: React.FC<MovieListProps> = ({ movies }) => {
-  const [currentPage, setCurrentPage] = useState(0);
-  const moviesPerPage = 5;
-
-  const startIndex = currentPage * moviesPerPage;
-  const endIndex = startIndex + moviesPerPage;
-  const currentMovies = movies.slice(startIndex, endIndex);
+  useEffect(() => {
+    async function fetch() {
+      const data = await fetchMovieRecommendations(currentPage); // Passar a página atual para a API
+      if (data) {
+        setRecommendedMovies(data.movies); // Filmes da página atual
+        setNextPageUrl(data.nextPageUrl); // URL da próxima página
+        setLoading(false)
+      }
+    }
+    setLoading(true)
+    fetch();
+  }, [currentPage]); // Recarregar os filmes sempre que a página mudar
 
   const handleNextPage = () => {
-    if (endIndex < movies.length) setCurrentPage((prev) => prev + 1);
+    if (nextPageUrl) {
+      setCurrentPage((prevPage) => prevPage + 1); // Aumenta a página
+    }
   };
 
   const handlePrevPage = () => {
-    if (currentPage > 0) setCurrentPage((prev) => prev - 1);
+    if (currentPage > 1) {
+      setCurrentPage((prevPage) => prevPage - 1); // Diminui a página
+    }
   };
-
-  if (!movies || movies.length === 0) {
-    return <Typography variant="h6" align="center">Carregando filmes ou nenhum filme encontrado...</Typography>;
-  }
 
   return (
     <Box sx={{ flex: 1, overflowY: 'auto', padding: 2 }}>
       <Typography variant="h6" align="center" gutterBottom>
         Recomendados
       </Typography>
-      
-      <section className='flex items-center justify-center flex-col'>
-        {currentMovies.map((movie, index) => (
-            <MovieCard movie={movie} key={index+"cardrecomend"+movie.id}/>
+
+      <section className="flex items-center justify-center flex-col">
+        {loading ? <Card>Carregando...</Card> : recommendedMovies.map((movie, index) => (
+          <MovieCard movie={movie} key={index + "cardrecomend" + movie.id} />
         ))}
       </section>
 
@@ -45,7 +53,7 @@ const MovieListRecomendado: React.FC<MovieListProps> = ({ movies }) => {
           variant="outlined"
           color="primary"
           onClick={handlePrevPage}
-          disabled={currentPage === 0}
+          disabled={!(currentPage > 1)} // Desabilitar se não houver página anterior
           sx={{ marginRight: 2 }}
         >
           Anterior
@@ -54,7 +62,7 @@ const MovieListRecomendado: React.FC<MovieListProps> = ({ movies }) => {
           variant="outlined"
           color="primary"
           onClick={handleNextPage}
-          disabled={endIndex >= movies.length}
+          disabled={!nextPageUrl} // Desabilitar se não houver próxima página
         >
           Próximo
         </Button>

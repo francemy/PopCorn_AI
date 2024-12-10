@@ -7,6 +7,7 @@ import {
     Box,
     IconButton,
     Tooltip,
+    Chip,
 } from "@mui/material";
 import {
     Favorite as FavoriteIcon,
@@ -118,27 +119,32 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
             >
                 {/* Primeira linha: Imagem e Título */}
                 <div className="h-20">
-                <CardMedia
-                    component="img"
-                    alt={safeTitle}
-                    height={"20px"}
-                    image={safeImageUrl}
-                    sx={{ objectFit: "cover" }}
-                    onError={(e) => { const imgElement = e.currentTarget; imgElement.src = "/placeholder-movie.png"; imgElement.onerror = null; }}
-                />
+                    <CardMedia
+                        component="img"
+                        alt={safeTitle}
+                        height={"20px"}
+                        image={safeImageUrl}
+                        sx={{ objectFit: "cover" }}
+                        onError={(e) => { const imgElement = e.currentTarget; imgElement.src = "/placeholder-movie.png"; imgElement.onerror = null; }}
+                    />
                 </div>
-               
+
                 <CardContent sx={{ paddingBottom: "8px" }}>
-                    <Typography variant="h6" component="div" sx={{ whiteSpace: 'normal', overflow: 'hidden', textOverflow: 'ellipsis', background:"white" }}>
+                    <Typography variant="h6" component="div" sx={{ whiteSpace: 'normal', overflow: 'hidden', textOverflow: 'ellipsis', background: "white" }}>
                         {safeTitle}
                     </Typography>
                     <Typography variant="body2" color="textSecondary" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal' }}>
                         {safeDescription}
                     </Typography>
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1, overflow: 'auto', color: 'black' }}>
+                        {movie.genres.map((genre) => (
+                            <Chip key={genre.id} label={genre.name} variant="outlined" color="info" sx={{ fontSize: "0.875rem" , textShadow: '9'}}  />
+                        ))}
+                    </Box>
                 </CardContent>
 
                 {/* Segunda linha: Interações do usuário */}
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 2 ,background: "white" }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 2, background: "white" }}>
                     {/* Ícones de Interação */}
                     <Box sx={{ display: "flex" }}>
                         <Tooltip title="Gostei">

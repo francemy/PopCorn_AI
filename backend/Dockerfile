@@ -31,10 +31,21 @@ COPY . .
 RUN mkdir -p /app/logs
 RUN chmod -R 777 /app/logs
 
+COPY ./api/management/commands/ ./api/management/commands/
+
 # Coletar arquivos estáticos do Django
 # Não é recomendado rodar isso no Dockerfile diretamente, mas mantendo aqui como parte do processo inicial
 # Você pode rodar isso manualmente após o build ou como parte de um script de inicialização.
 RUN python manage.py collectstatic --noinput
+
+# Copiar o script para dentro do contêiner
+COPY run_commands.sh /app/
+
+# Tornar o script executável
+RUN chmod +x /app/run_commands.sh
+
+# Definir o ENTRYPOINT para rodar o script
+ENTRYPOINT ["/app/run_commands.sh"]
 
 # Expor a porta padrão do Django (8000)
 EXPOSE 8000

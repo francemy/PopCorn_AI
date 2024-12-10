@@ -62,7 +62,25 @@ O agente pode usar dois tipos de aprendizado:
 ### Benefícios
 - **Recomendações Personalizadas**: Filmes são sugeridos com base nos interesses específicos de cada usuário.
 - **Adaptação ao Longo do Tempo**: O sistema aprende continuamente com o feedback dos usuários, garantindo que as sugestões sejam sempre relevantes.
-- **Experiência de Usuário Aprimorada**: O agente ajusta suas recomendações para fornecer uma experiência mais precisa e satisfatória, aumentando a probabilidade de o usuário encontrar filmes que realmente goste.
+- **Experiência de Usuário Aprimorada**: O agente ajusta suas recomendações para fornecer uma experiência mais precisa e satisfatória, aumentando a probabilidade de o usuário encontrar filmes que realmente goste
+O agente utilizado nesse código é um **Agente Utilitário**. 
+
+### Por que é um Agente Utilitário?
+
+1. **Otimizando Resultados:**  
+   O algoritmo busca recomendações que maximizem a "satisfação" do usuário, calculando uma pontuação para cada filme com base em preferências (como gêneros favoritos) e interações passadas (como likes e dislikes).  
+
+2. **Consideração de Preferências:**  
+   Ele dá mais peso aos gêneros favoritos do usuário, ajusta a pontuação de filmes conforme prioridades, e leva em conta feedback explícito (ex.: likes e dislikes).  
+
+3. **Exclusão de Opções Relevantes:**  
+   Ao excluir filmes já assistidos ou avaliados negativamente, o agente está agindo para melhorar a utilidade percebida das recomendações, evitando redundâncias ou sugestões indesejadas.
+
+4. **Cálculo de Utilidade:**  
+   A função `calculate_movie_score` é claramente um modelo de cálculo de utilidade, somando pesos baseados em interações e preferências para otimizar o resultado final.
+
+### Resumo:  
+O comportamento desse agente é projetado para encontrar e recomendar os filmes que oferecem o maior valor para o usuário, dado o histórico de interações e as preferências registradas, características típicas de um **Agente Utilitário**.
 
 ### Como Usar
 

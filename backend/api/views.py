@@ -5,6 +5,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.tokens import RefreshToken,AccessToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.decorators import api_view
+from rest_framework.pagination import PageNumberPagination
 
 from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -27,6 +28,13 @@ from .serializers import (
 from .utils import create_response,get_movie_interactions,get_user_interactions,adjust_user_preferences,calculate_movie_score,get_user_favorite_genre_ids  # Importando a função
 from django.db.models import Avg,Count,Q,F
 
+class MoviePagination(PageNumberPagination):
+    """
+    Configuração de paginação personalizada.
+    """
+    page_size = 10  # Número de filmes por página
+    page_size_query_param = 'page_size'  # Permitir que o cliente ajuste o tamanho
+    max_page_size = 100  # Limite máximo para o tamanho da página
 class PreferenceListView(generics.ListAPIView):
     permission_classes = [AllowAny]
     queryset = Preference.objects.all()  # ou qualquer filtro que você precise
@@ -256,10 +264,9 @@ class RatingCreateUpdateView(APIView):
                     status_code=400
                 )
 
-
 class MovieListCreateView(APIView):
     """
-    View para listar e criar filmes.
+    View para listar e criar filmes com suporte à paginação.
     """
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]  # Apenas usuários autenticados podem acessar
@@ -267,13 +274,32 @@ class MovieListCreateView(APIView):
     def get(self, request):
         user = request.user  # Pega o usuário logado
         movies = Movie.objects.all()
+
+        # Filtrar por gênero, se fornecido
+        genre_id = request.query_params.get("genre")
+        if genre_id:
+            try:
+                genre_id = int(genre_id)  # Tenta converter para inteiro
+                movies = movies.filter(genres__id=genre_id)
+            except ValueError:
+                # Se o gênero não for válido, retorna todos os filmes sem filtro
+                movies = Movie.objects.all()
+            except Movie.DoesNotExist:
+                # Caso o gênero não exista na base de dados, retorna todos os filmes
+                movies = Movie.objects.all()
+
+        # Aplicar paginação
+        paginator = MoviePagination()
+        paginated_movies = paginator.paginate_queryset(movies, request)
+
         movie_data = []
 
         # Adicionando interações personalizadas para o usuário logado
-        for movie in movies:
+        for movie in paginated_movies:
             movie_info = MovieSerializer(movie).data  # Serializa os dados básicos do filme
             interactions = get_movie_interactions(movie)  # Obtém as interações gerais
             user_interactions = get_user_interactions(movie, user)  # Obtém as interações do usuário logado
+
             # Atualiza as interações específicas do usuário
             movie_info['user_interactions'] = user_interactions
             # Atualiza as interações gerais no filme
@@ -281,7 +307,8 @@ class MovieListCreateView(APIView):
 
             movie_data.append(movie_info)
 
-        return create_response(message="Lista de filmes recuperada com sucesso.", data=movie_data, status_code=200)
+        # Retorna a resposta paginada
+        return paginator.get_paginated_response(movie_data)
 
     def post(self, request):
         serializer = MovieSerializer(data=request.data)
@@ -301,7 +328,6 @@ class MovieListCreateView(APIView):
             )
 
         return create_response(message=serializer.errors, status_code=400)
-
 
 
 class GenreListView(APIView):
@@ -327,12 +353,10 @@ class DashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # Obter todos os filmes e gêneros
-        movies = Movie.objects.all()
+        # Obter todos os  e gêneros
         genres = Genre.objects.all()
 
-        # Serializar filmes e gêneros
-        movie_serializer = MovieSerializer(movies, many=True)
+        # Serializar  e gêneros
         genre_serializer = GenreSerializer(genres, many=True)
 
         # Avaliações médias por gênero
@@ -362,14 +386,27 @@ class DashboardView(APIView):
         genre_distribution_data = [
             {"name": g["genres__name"], "value": g["value"]} for g in genre_distribution
         ]
+        
+        preferences = Preference.objects.all()
+        lista_preferences = []
+
+        for preference in preferences:
+            serialized_data = PreferenceSerializer(preference).data  # Serializa a preferência atual
+            
+            # Adiciona informações relacionadas
+            serialized_data['genre'] = GenreSerializer(preference.genre).data  # Serializa o gênero associado
+            serialized_data['username'] = preference.user.username  # Adiciona o nome do usuário
+
+            lista_preferences.append(serialized_data)
 
         # Dados consolidados para o dashboard
         dashboard_data = {
-            "movies": movie_serializer.data,
+            
             "genres": genre_serializer.data,
             "ratings": ratings_by_genre,
             "interactions": interactions,
             "genreDistribution": genre_distribution_data,
+            "preferences": lista_preferences
         }
 
         return create_response(
@@ -423,6 +460,8 @@ class DashboardView(APIView):
 #             data=movie_list,
 #             status_code=200
 #         )
+
+
 class PersonalizedRecommendationsViewOrdeby(APIView):
     """
     Gera recomendações de filmes personalizadas no formato esperado.
@@ -461,8 +500,8 @@ class PersonalizedRecommendationsViewOrdeby(APIView):
         movie_list = []
         for movie in movies:
             movie_info = MovieSerializer(movie).data  # Serializa os dados básicos do filme
-            interactions = get_movie_interactions(movie)  # Obtém as interações gerais do filme
-            user_interactions = get_user_interactions(movie, user)  # Obtém as interações do usuário com o filme
+            interactions = self.get_movie_interactions(movie)  # Obtém as interações gerais do filme
+            user_interactions = self.get_user_interactions(movie, user)  # Obtém as interações do usuário com o filme
 
             # Ajuste da pontuação do filme
             movie_score = self.calculate_movie_score(movie, user, favorite_genre_ids, secondary_genre_ids)  # Função para calcular a pontuação
@@ -474,12 +513,12 @@ class PersonalizedRecommendationsViewOrdeby(APIView):
 
             movie_list.append(movie_info)
 
-        # 6. Retornar a lista de filmes com a pontuação
-        return create_response(
-            message="Recomendações personalizadas com base nas suas preferências.",
-            data=movie_list,
-            status_code=200
-        )
+        # Paginação usando a classe personalizada
+        paginator = MoviePagination()
+        result_page = paginator.paginate_queryset(movie_list, request)
+
+        # Retorna a resposta paginada
+        return paginator.get_paginated_response(result_page)
 
     def calculate_movie_score(self, movie, user, favorite_genre_ids, secondary_genre_ids):
         """
@@ -499,13 +538,29 @@ class PersonalizedRecommendationsViewOrdeby(APIView):
                 score += 1  # Peso básico
 
         # Pontuação baseada nas interações do usuário
-        user_interactions = get_user_interactions(movie, user)
+        user_interactions = self.get_user_interactions(movie, user)
         if user_interactions.get('liked'):
             score += 3  # Aumenta a pontuação se o usuário gostou
         elif user_interactions.get('disliked'):
             score -= 3  # Diminui a pontuação se o usuário não gostou
 
         return score
+
+    def get_movie_interactions(self, movie):
+        """
+        Função para retornar interações gerais com o filme.
+        """
+        likes = LikeDislike.objects.filter(movie=movie, action="like").count()
+        dislikes = LikeDislike.objects.filter(movie=movie, action="dislike").count()
+        return {"likes": likes, "dislikes": dislikes}
+
+    def get_user_interactions(self, movie, user):
+        """
+        Função para obter as interações específicas do usuário com o filme.
+        """
+        like = LikeDislike.objects.filter(movie=movie, user=user, action="like").exists()
+        dislike = LikeDislike.objects.filter(movie=movie, user=user, action="dislike").exists()
+        return {"liked": like, "disliked": dislike}
   
 
 

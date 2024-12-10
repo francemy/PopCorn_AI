@@ -1,4 +1,4 @@
-import { Rating } from '@/types/types';
+import { Rating,MovieList } from '@/types/types';
 import axios from 'axios';
 
 // Criação da instância do axios
@@ -18,21 +18,24 @@ const handleApiError = (error: unknown) => {
 };
 
 // Função para buscar filmes
-export const fetchMovies = async () => {
+export const fetchMovies = async (page = 1, pageSize = 12, genreId:number | null = null) => {
   const token = localStorage.getItem("access_token");
   try {
-    const response = await api.get('movies/', {
+    const response = await api.get("movies/", {
+      params: { page, page_size: pageSize, genre: genreId }, // Envia parâmetros na query string
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
     });
+
     if (response.status === 200) return response.data;
-    return { data: [] };
+    return { results: [], count: 0 };
   } catch (error) {
     handleApiError(error);
   }
 };
+
 
 // Função para buscar gêneros
 export const fetchGenres = async () => {
@@ -68,26 +71,35 @@ export const createRating = async (rating: Rating) => {
     handleApiError(error);
   }
 };
-
-// Função para buscar recomendações de filmes
-export const fetchMovieRecommendations = async () => {
+// Função para buscar recomendações de filmes com paginação
+export const fetchMovieRecommendations = async (page: number = 1) => {
   try {
     const token = localStorage.getItem("access_token");
-    const response = await api.get('/movies/recomendado/', {
+
+    const response = await api.get(`/movies/recomendado/?page=${page}&page_size=5`, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
     });
-    console.log(response.data)
+
     if (response.status === 200) {
-      return response.data; // Aqui retornamos os títulos dos filmes recomendados
+      // Retorna os filmes da página atual
+      console.log(response.data.next)
+      return {
+        movies: response.data.results, // Filmes recomendados da página
+        nextPageUrl: response.data.next, // URL para a próxima página
+      };
     }
-    return [];
+
+    return { movies: [], nextPageUrl: null };
   } catch (error) {
     handleApiError(error);
+    return { movies: [], nextPageUrl: null };
   }
 };
+
+
 
 // Função para buscar filmes baseados no gênero
 export const fetchMoviesByGenre = async () => {

@@ -7,7 +7,8 @@ import {
   Box,
   IconButton,
   Tooltip,
-  useMediaQuery
+  useMediaQuery,
+  Chip  // Adicionando Chip para os gêneros
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import {
@@ -35,7 +36,6 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
 
   const [isFavorite, setIsFavorite] = useState(movie.user_interactions.favorited);
   const [likeStatus, setLikeStatus] = useState<'none' | 'like' | 'dislike'>(movie?.user_interactions?.liked);
-  // const [isModalOpen, setIsModalOpen] = useState(false); // Estado para a RatingModal
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false); // Estado para controlar a modal de avaliação
 
   const safeTitle = movie.title || "Título não disponível";
@@ -46,7 +46,6 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
   const descriptionMaxLength = isMobile ? 50 : 100;
 
   const handleFavorite = async (e: React.MouseEvent) => {
-    
     e.stopPropagation();
     const token = localStorage.getItem("access_token");
     try {
@@ -173,23 +172,29 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
         <Typography variant="body2" color="textSecondary" sx={{ flexGrow: 1, mb: 2, height: isMobile ? "auto" : 50, overflow: "hidden", textOverflow: "ellipsis" }}>
           {truncateText(safeDescription, descriptionMaxLength)}
         </Typography>
+
+        {/* Exibição dos Gêneros */} 
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1, overflow:'auto', color:'black' }}>
+          {movie.genres.map((genre) => (
+            <Chip key={genre.id} label={genre.name} variant="outlined" color="info" sx={{ fontSize: "0.875rem" }} />
+          ))}
+        </Box>
       </CardContent>
       <div className="relative flex flex-row ">
-        
-          <Tooltip title="Gostei">
-            <div>
-              <IconButton onClick={handleLike} color={likeStatus === "like" ? "primary" : "default"}>
-                {likeStatus === "like" ? <ThumbUpIcon /> : <ThumbUpOutlinedIcon />}
-              </IconButton>
-            </div>
-          </Tooltip>
-          <Tooltip title="Não gostei">
-            <div>
-              <IconButton onClick={handleDislike} color={likeStatus === "dislike" ? "error" : "default"}>
-                {likeStatus === "dislike" ? <ThumbDownIcon /> : <ThumbDownOutlinedIcon />}
-              </IconButton>
-            </div>
-          </Tooltip>
+        <Tooltip title="Gostei">
+          <div>
+            <IconButton onClick={handleLike} color={likeStatus === "like" ? "primary" : "default"}>
+              {likeStatus === "like" ? <ThumbUpIcon /> : <ThumbUpOutlinedIcon />}
+            </IconButton>
+          </div>
+        </Tooltip>
+        <Tooltip title="Não gostei">
+          <div>
+            <IconButton onClick={handleDislike} color={likeStatus === "dislike" ? "error" : "default"}>
+              {likeStatus === "dislike" ? <ThumbDownIcon /> : <ThumbDownOutlinedIcon />}
+            </IconButton>
+          </div>
+        </Tooltip>
         <Tooltip title="Assistir">
           <IconButton color="primary" onClick={e => { e.stopPropagation(); handleWatch(movie.id); }} sx={{ width: "auto", maxWidth: 200 }}>
             <PlayCircle />
@@ -198,7 +203,8 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
         <Tooltip title="avaliar o filme">
           <IconButton color="primary" onClick={openRatingModal}>
             <NoteAltOutlined />
-          </IconButton></Tooltip>
+          </IconButton>
+        </Tooltip>
       </div>
 
       {/* Modal de Detalhes do Filme */}

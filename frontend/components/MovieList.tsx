@@ -1,18 +1,18 @@
-"use client"
-import React, { useEffect, useState } from 'react';
+"use client";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Grid,
   Typography,
   CircularProgress,
   Container,
-  Pagination
-} from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+  Pagination,
+} from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 
-import { fetchMovies } from '../services/api';
-import MovieCard from './MovieCard';
-import { Genre, MovieList } from '@/types/types';
+import { fetchMovies } from "../services/api";
+import MovieCard from "./MovieCard";
+import { MovieList } from "@/types/types";
 
 interface MovieListProps {
   genreId?: number | null;
@@ -22,57 +22,35 @@ const MovieListP: React.FC<MovieListProps> = ({ genreId }) => {
   const [movies, setMovies] = useState<MovieList[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);  // Estado para controlar a página
-  const [moviesPerPage] = useState(12); // Número de filmes por página
-  const [currentMovies, setCurrentMovies] = useState<MovieList[]>([]);
-
-  useEffect(() => {
-    const indexOfLastMovie = page * moviesPerPage;
-    const indexOfFirstMovie = indexOfLastMovie - moviesPerPage;
-    const currentMoviesSlice = movies.slice(indexOfFirstMovie, indexOfLastMovie);
-    setCurrentMovies(currentMoviesSlice);
-  }, [page, movies, moviesPerPage]);
+  const [page, setPage] = useState(1); // Página atual
+  const [totalPages, setTotalPages] = useState(1); // Total de páginas retornado pelo backend
 
   const theme = useTheme();
 
   useEffect(() => {
     const getMovies = async () => {
-
       try {
         setLoading(true);
 
-        if (genreId === 0) {
-          const { data } = await fetchMovies();
+        const { results, count } = await fetchMovies(page, 12, genreId); // Inclui parâmetros de página e gênero
 
-          setMovies(data);
-        }
-        else {
-          const { data } = await fetchMovies();
-
-          const filteredMovies = genreId
-            ? data.filter((movie: MovieList) =>
-              movie.genres.some((genre: Genre) => genre.id === genreId)
-            )
-            : data;
-            setMovies(filteredMovies);
-        }
-        
+        setMovies(results); // Define os filmes da página atual
+        setTotalPages(Math.ceil(count / 12)); // Calcula o total de páginas baseado no backend
         setError(null);
       } catch (error) {
-        console.error('Error fetching movies:', error);
-        setError('Não foi possível carregar os filmes. Verifique sua conexão.');
+        console.error("Error fetching movies:", error);
+        setError("Não foi possível carregar os filmes. Verifique sua conexão.");
       } finally {
         setLoading(false);
       }
     };
 
     getMovies();
-  }, [genreId]);
+  }, [page, genreId]);
 
-  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
-    setPage(value); // Atualiza a página
+  const handlePageChange = (_: React.ChangeEvent<unknown>, value: number) => {
+    setPage(value); // Atualiza a página ao clicar na paginação
   };
-
 
   if (loading) {
     return (
@@ -98,19 +76,10 @@ const MovieListP: React.FC<MovieListProps> = ({ genreId }) => {
         height="100vh"
         sx={{ backgroundColor: theme.palette.background.default, p: 2 }}
       >
-        <Typography
-          variant="h6"
-          color="error"
-          align="center"
-          gutterBottom
-        >
+        <Typography variant="h6" color="error" align="center" gutterBottom>
           {error}
         </Typography>
-        <Typography
-          variant="body1"
-          align="center"
-          color="textSecondary"
-        >
+        <Typography variant="body1" align="center" color="textSecondary">
           Tente atualizar a página ou verificar sua conexão com a internet.
         </Typography>
       </Box>
@@ -136,11 +105,7 @@ const MovieListP: React.FC<MovieListProps> = ({ genreId }) => {
           Nenhum filme encontrado
         </Typography>
         {genreId && (
-          <Typography
-            variant="body1"
-            align="center"
-            color="textSecondary"
-          >
+          <Typography variant="body1" align="center" color="textSecondary">
             Não há filmes neste gênero no momento.
           </Typography>
         )}
@@ -149,23 +114,23 @@ const MovieListP: React.FC<MovieListProps> = ({ genreId }) => {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container maxWidth="xl" sx={{ py: 3 }}>
       <Grid
         container
-        spacing={{ xs: 2, sm: 3, md: 4 }}
-        columns={{ xs: 4, sm: 8, md: 12 }}
+        spacing={{ xs: 1, sm: 2, md: 2 }}
+        columns={{ xs: 2, sm: 6, md: 10 }}
       >
-        {currentMovies.map((movie, index) => (
+        {movies.map((movie) => (
           <Grid
             item
-            key={ index+"mov-s"+movie.id}
+            key={movie.id}
             xs={2}
             sm={4}
             md={3}
             sx={{
-              display: 'flex',
-              justifyContent: 'center',
-              mb: 2
+              display: "flex",
+              justifyContent: "center",
+              mb: 2,
             }}
           >
             <MovieCard movie={movie} />
@@ -176,7 +141,7 @@ const MovieListP: React.FC<MovieListProps> = ({ genreId }) => {
       {/* Paginação */}
       <Box display="flex" justifyContent="center" sx={{ mt: 4 }}>
         <Pagination
-          count={Math.ceil(movies.length / moviesPerPage)}
+          count={totalPages}
           page={page}
           onChange={handlePageChange}
           color="primary"

@@ -37,13 +37,13 @@ export interface User {
     review: string;  // Comentário do usuário sobre o filme
     created_at: string;  // Data de criação da avaliação
   }
-  
   // Tipo para as preferências do usuário
   export interface Preference {
     id: number;
-    user: User;
+    username: string;
     genre: Genre;  // Gênero preferido do usuário
-    preference_type: 'like' | 'dislike';  // Tipo de preferência (curtir ou não gostar)
+    preference_type: 'favorite' | 'avoid';  // Tipo de preferência (curtir ou não gostar)
+    priority: number
   }
   
   // Tipo para a resposta de uma requisição de filmes
@@ -89,3 +89,17 @@ export interface User {
     review: string;  // Comentário do usuário sobre o filme
     created_at: string;  // Data de criação da avaliação
   }
+
+export interface MovieDashboardData {
+  movies: MovieList[];
+  genres: Genre[];
+  ratings: { genre: string; avgRating: number }[];
+  interactions: {
+    likes: number;
+    dislikes: number;
+    favorites: number;
+    watched: number;
+  };
+  genreDistribution: { name: string; value: number }[];
+  preferences?: Preference[]
+}
